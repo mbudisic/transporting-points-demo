@@ -631,8 +631,13 @@ class UIComponents:
         if distribution_a.is_empty or distribution_b.is_empty or current_transport_mode == 'hide':
             return
             
-        st.markdown("### Distance Matrices")
-        st.markdown("The following tables show the distances used in computing the transportation plan.")
+        st.markdown("## Distance Matrices")
+        if current_transport_mode in ['bottleneck_spatial', 'wasserstein_spatial']:
+            st.markdown("*Showing spatial distances between blob centers*")
+        else:
+            st.markdown("*Showing height differences between blobs*")
+            
+        st.markdown("*Yellow highlighted cells indicate pairs used in the transport plan*")
         
         # Split positive and negative blobs
         pos_blobs_a = [b for b in distribution_a.blobs if b.height > 0]
@@ -687,53 +692,67 @@ class UIComponents:
             row_labels = [f"A{b.id}" for b in pos_blobs_a]
             pos_df = pd.DataFrame(distance_matrix, columns=col_labels, index=row_labels)
             
-            # Style the DataFrame based on matching pairs
-            def highlight_cells(val, row_name, col_name):
-                # If either row_name or col_name is None, return empty style
-                if row_name is None or col_name is None:
-                    return ''
+            # Format the values to 4 decimal places
+            pos_df = pos_df.round(4)
+            
+            # Display the table header
+            st.markdown("**Positive-to-Positive Blob Distances:**")
+            
+            # Create a list to track the matching pairs for highlighting
+            highlighted_pairs = []
+            for row_blob in pos_blobs_a:
+                for col_blob in pos_blobs_b:
+                    if (row_blob.id, col_blob.id) in highlight_pairs:
+                        highlighted_pairs.append((row_blob.id, col_blob.id))
+            
+            # Display the table with custom HTML to highlight matching pairs
+            html_table = "<table style='width:100%; border-collapse: collapse;'>"
+            
+            # Add header row
+            html_table += "<tr><th></th>"
+            for col in col_labels:
+                html_table += f"<th style='border: 1px solid gray; padding: 8px; text-align: center;'>{col}</th>"
+            html_table += "</tr>"
+            
+            # Add data rows
+            for i, row_idx in enumerate(row_labels):
+                html_table += f"<tr><th style='border: 1px solid gray; padding: 8px; text-align: center;'>{row_idx}</th>"
                 
-                try:
-                    # Extract indices from row/col names (format: "A{id}" and "B{id}")
-                    row_id = int(row_name[1:])
-                    col_id = int(col_name[1:])
+                for j, col_idx in enumerate(col_labels):
+                    # Get the blob IDs from the labels
+                    row_id = int(row_idx[1:])
+                    col_id = int(col_idx[1:])
                     
-                    # Find the actual blob IDs
-                    row_blob_id = pos_blobs_a[row_labels.index(row_name)].id
-                    col_blob_id = pos_blobs_b[col_labels.index(col_name)].id
+                    # Determine if this cell should be highlighted
+                    is_highlighted = False
+                    for pair in highlighted_pairs:
+                        blob_a_id, blob_b_id = pair
+                        if row_id == blob_a_id and col_id == blob_b_id:
+                            is_highlighted = True
+                            break
                     
-                    # Check if this pair is in the matching
-                    if (row_blob_id, col_blob_id) in highlight_pairs:
-                        return 'font-weight: bold; background-color: rgba(255, 255, 0, 0.3)'
-                except (IndexError, ValueError, KeyError):
-                    # Handle any exceptions that might occur during indexing
-                    pass
+                    # Apply appropriate style
+                    if is_highlighted:
+                        cell_style = "background-color: rgba(255, 255, 0, 0.3); font-weight: bold;"
+                    else:
+                        cell_style = ""
+                    
+                    # Get the value and format it
+                    cell_value = pos_df.iloc[i, j]
+                    
+                    # Add the cell with the value
+                    html_table += f"<td style='border: 1px solid gray; padding: 8px; text-align: center; {cell_style}'>{cell_value}</td>"
                 
-                return ''
+                html_table += "</tr>"
             
-            # Apply styling using a simpler approach
-            styled_pos_df = pos_df.style.format("{:.4f}")
+            html_table += "</table>"
             
-            # Define a function to apply styling to each cell
-            def apply_styles(df_styler):
-                for i, row_idx in enumerate(pos_df.index):
-                    for j, col_idx in enumerate(pos_df.columns):
-                        style = highlight_cells(pos_df.iloc[i, j], row_idx, col_idx)
-                        if style:
-                            df_styler.applymap(lambda x: style, subset=pd.IndexSlice[row_idx, col_idx])
-                return df_styler
-            
-            styled_pos_df = apply_styles(styled_pos_df).set_table_styles([
-                {'selector': 'th', 'props': [('font-weight', 'bold')]},
-                {'selector': 'td', 'props': [('text-align', 'center')]}
-            ])
-            
-            # Display the table
-            st.dataframe(styled_pos_df)
+            # Display the HTML table
+            st.markdown(html_table, unsafe_allow_html=True)
             
         # Similar logic for negative blobs
         if neg_blobs_a and neg_blobs_b:
-            st.markdown("#### Negative-to-Negative Distances")
+            st.markdown("### Negative-to-Negative Distances")
             
             # Create the distance matrix for negative blobs
             if current_transport_mode in ['bottleneck_spatial', 'wasserstein_spatial']:
@@ -754,49 +773,63 @@ class UIComponents:
             row_labels = [f"A{b.id}" for b in neg_blobs_a]
             neg_df = pd.DataFrame(distance_matrix, columns=col_labels, index=row_labels)
             
-            # Style the DataFrame based on matching pairs
-            def highlight_cells(val, row_name, col_name):
-                # If either row_name or col_name is None, return empty style
-                if row_name is None or col_name is None:
-                    return ''
+            # Format the values to 4 decimal places
+            neg_df = neg_df.round(4)
+            
+            # Display the table header
+            st.markdown("**Negative-to-Negative Blob Distances:**")
+            
+            # Create a list to track the matching pairs for highlighting
+            highlighted_pairs = []
+            for row_blob in neg_blobs_a:
+                for col_blob in neg_blobs_b:
+                    if (row_blob.id, col_blob.id) in highlight_pairs:
+                        highlighted_pairs.append((row_blob.id, col_blob.id))
+            
+            # Display the table with custom HTML to highlight matching pairs
+            html_table = "<table style='width:100%; border-collapse: collapse;'>"
+            
+            # Add header row
+            html_table += "<tr><th></th>"
+            for col in col_labels:
+                html_table += f"<th style='border: 1px solid gray; padding: 8px; text-align: center;'>{col}</th>"
+            html_table += "</tr>"
+            
+            # Add data rows
+            for i, row_idx in enumerate(row_labels):
+                html_table += f"<tr><th style='border: 1px solid gray; padding: 8px; text-align: center;'>{row_idx}</th>"
                 
-                try:
-                    # Extract indices from row/col names (format: "A{id}" and "B{id}")
-                    row_id = int(row_name[1:])
-                    col_id = int(col_name[1:])
+                for j, col_idx in enumerate(col_labels):
+                    # Get the blob IDs from the labels
+                    row_id = int(row_idx[1:])
+                    col_id = int(col_idx[1:])
                     
-                    # Find the actual blob IDs
-                    row_blob_id = neg_blobs_a[row_labels.index(row_name)].id
-                    col_blob_id = neg_blobs_b[col_labels.index(col_name)].id
+                    # Determine if this cell should be highlighted
+                    is_highlighted = False
+                    for pair in highlighted_pairs:
+                        blob_a_id, blob_b_id = pair
+                        if row_id == blob_a_id and col_id == blob_b_id:
+                            is_highlighted = True
+                            break
                     
-                    # Check if this pair is in the matching
-                    if (row_blob_id, col_blob_id) in highlight_pairs:
-                        return 'font-weight: bold; background-color: rgba(255, 255, 0, 0.3)'
-                except (IndexError, ValueError, KeyError):
-                    # Handle any exceptions that might occur during indexing
-                    pass
+                    # Apply appropriate style
+                    if is_highlighted:
+                        cell_style = "background-color: rgba(255, 255, 0, 0.3); font-weight: bold;"
+                    else:
+                        cell_style = ""
+                    
+                    # Get the value and format it
+                    cell_value = neg_df.iloc[i, j]
+                    
+                    # Add the cell with the value
+                    html_table += f"<td style='border: 1px solid gray; padding: 8px; text-align: center; {cell_style}'>{cell_value}</td>"
                 
-                return ''
+                html_table += "</tr>"
             
-            # Apply styling using a simpler approach
-            styled_neg_df = neg_df.style.format("{:.4f}")
+            html_table += "</table>"
             
-            # Define a function to apply styling to each cell
-            def apply_styles(df_styler):
-                for i, row_idx in enumerate(neg_df.index):
-                    for j, col_idx in enumerate(neg_df.columns):
-                        style = highlight_cells(neg_df.iloc[i, j], row_idx, col_idx)
-                        if style:
-                            df_styler.applymap(lambda x: style, subset=pd.IndexSlice[row_idx, col_idx])
-                return df_styler
-            
-            styled_neg_df = apply_styles(styled_neg_df).set_table_styles([
-                {'selector': 'th', 'props': [('font-weight', 'bold')]},
-                {'selector': 'td', 'props': [('text-align', 'center')]}
-            ])
-            
-            # Display the table
-            st.dataframe(styled_neg_df)
+            # Display the HTML table
+            st.markdown(html_table, unsafe_allow_html=True)
     
     @staticmethod
     def render_metrics(distribution_a: Distribution, distribution_b: Distribution, calculator, on_update: Callable):
