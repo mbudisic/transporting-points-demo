@@ -80,18 +80,24 @@ def create_gaussian_mixture(blobs: List[Dict[str, Any]], points: np.ndarray) -> 
     for blob in blobs:
         center = (blob['x'], blob['y'])
         variance = blob['variance']
-        height = blob['height']
-        sign = blob['sign']
+        height = blob['height']  # This can be positive or negative
+        sign = blob['sign']      # This can be +1 or -1
+        
+        # The effective weight is the product of height and sign
+        # This allows for negative heights in the distribution
+        effective_weight = height * sign
         
         # Calculate Gaussian values for all points
         gauss_values = np.array([gaussian_2d(point, center, variance) for point in points])
         
         # Add weighted contribution to the mixture
-        dist += sign * height * gauss_values
+        dist += effective_weight * gauss_values
     
-    # Normalize to ensure the positive part integrates to 1
-    positive_sum = np.sum(np.maximum(dist, 0))
-    if positive_sum > 0:
-        dist = dist / positive_sum
+    # Calculate the sum of absolute values to normalize properly
+    total_abs_sum = np.sum(np.abs(dist))
+    if total_abs_sum > 0:
+        # Normalize to make the sum of absolute values equal to 1
+        # This ensures both positive and negative parts are normalized proportionally
+        dist = dist / total_abs_sum
     
     return dist

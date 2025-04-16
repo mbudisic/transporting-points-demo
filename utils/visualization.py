@@ -107,21 +107,39 @@ def create_interactive_plot(distribution_a, distribution_b, active_distribution=
             
             opacity = 0.7 if active_distribution == 'A' else 0.3
             
+            # Use different color scale for positive and negative values
+            # Positive values: red scale
+            # Negative values: orange-pink scale
+            # Create a custom colorscale
+            colorscale = [
+                [0, f'rgba(255,150,150,{opacity})'],           # Negative values (pink/orange-ish)
+                [0.5, f'rgba(255,255,255,0)'],                 # Zero (transparent white)
+                [1, f'rgba(255,0,0,{opacity})']                # Positive values (red)
+            ]
+            
             fig.add_trace(go.Contour(
                 z=Z_a,
                 x=x_grid,
                 y=y_grid,
-                colorscale=[[0, f'rgba(255,0,0,0)'], [0.5, f'rgba(255,0,0,{opacity/2})'], [1, f'rgba(255,0,0,{opacity})']],
+                colorscale=colorscale,
                 showscale=False,
                 name='Distribution A',
-                hoverinfo='none'
+                hoverinfo='none',
+                contours=dict(
+                    start=-1,
+                    end=1,
+                    size=0.05,
+                    showlabels=False
+                )
             ))
             
             # Add markers and variance circles for distribution A
             for blob in distribution_a.blobs:
                 # Add center point
-                marker_size = 10 + blob['height'] * 2
-                marker_color = 'darkred' if blob['sign'] > 0 else 'purple'
+                marker_size = 10 + abs(blob['height']) * 2  # Use absolute value for size
+                # Different colors for positive vs negative height
+                marker_color = 'darkred' if blob['sign'] > 0 else 'orangered'
+                # Change marker symbol to indicate sign
                 marker_symbol = 'circle' if blob['sign'] > 0 else 'circle-open'
                 
                 fig.add_trace(go.Scatter(
@@ -140,17 +158,36 @@ def create_interactive_plot(distribution_a, distribution_b, active_distribution=
                     customdata=[{'type': 'center', 'dist': 'A', 'id': blob['id']}]
                 ))
                 
+                # Add sign indicator in the center of the blob
+                sign_symbol = '+' if blob['sign'] > 0 else '-'
+                fig.add_trace(go.Scatter(
+                    x=[blob['x']],
+                    y=[blob['y']],
+                    mode='text',
+                    text=sign_symbol,
+                    textfont=dict(
+                        size=16,
+                        color='white' if blob['sign'] > 0 else 'black'
+                    ),
+                    showlegend=False,
+                    hoverinfo='none'
+                ))
+                
                 # Add variance circle
                 theta = np.linspace(0, 2*np.pi, 50)
                 radius = np.sqrt(blob['variance'] * 2)  # Scale factor for visualization
                 x_circle = blob['x'] + radius * np.cos(theta)
                 y_circle = blob['y'] + radius * np.sin(theta)
                 
+                # Different line style for positive vs negative blobs
+                line_color = 'red' if blob['sign'] > 0 else 'orangered'
+                line_dash = 'dot' if blob['sign'] > 0 else 'dash'
+                
                 fig.add_trace(go.Scatter(
                     x=x_circle,
                     y=y_circle,
                     mode='lines',
-                    line=dict(color='red', width=1, dash='dot'),
+                    line=dict(color=line_color, width=1, dash=line_dash),
                     showlegend=False,
                     hoverinfo='none',
                     customdata=[{'type': 'variance', 'dist': 'A', 'id': blob['id']}] * len(theta)
@@ -164,21 +201,39 @@ def create_interactive_plot(distribution_a, distribution_b, active_distribution=
             
             opacity = 0.7 if active_distribution == 'B' else 0.3
             
+            # Use different color scale for positive and negative values
+            # Positive values: blue scale
+            # Negative values: purple-ish scale
+            # Create a custom colorscale
+            colorscale = [
+                [0, f'rgba(180,150,255,{opacity})'],           # Negative values (light purple)
+                [0.5, f'rgba(255,255,255,0)'],                 # Zero (transparent white)
+                [1, f'rgba(0,0,255,{opacity})']                # Positive values (blue)
+            ]
+            
             fig.add_trace(go.Contour(
                 z=Z_b,
                 x=x_grid,
                 y=y_grid,
-                colorscale=[[0, f'rgba(0,0,255,0)'], [0.5, f'rgba(0,0,255,{opacity/2})'], [1, f'rgba(0,0,255,{opacity})']],
+                colorscale=colorscale,
                 showscale=False,
                 name='Distribution B',
-                hoverinfo='none'
+                hoverinfo='none',
+                contours=dict(
+                    start=-1,
+                    end=1,
+                    size=0.05,
+                    showlabels=False
+                )
             ))
             
             # Add markers and variance circles for distribution B
             for blob in distribution_b.blobs:
                 # Add center point
-                marker_size = 10 + blob['height'] * 2
-                marker_color = 'darkblue' if blob['sign'] > 0 else 'purple'
+                marker_size = 10 + abs(blob['height']) * 2  # Use absolute value for size
+                # Different colors for positive vs negative height
+                marker_color = 'darkblue' if blob['sign'] > 0 else 'mediumpurple'
+                # Change marker symbol to indicate sign
                 marker_symbol = 'circle' if blob['sign'] > 0 else 'circle-open'
                 
                 fig.add_trace(go.Scatter(
@@ -197,17 +252,36 @@ def create_interactive_plot(distribution_a, distribution_b, active_distribution=
                     customdata=[{'type': 'center', 'dist': 'B', 'id': blob['id']}]
                 ))
                 
+                # Add sign indicator in the center of the blob
+                sign_symbol = '+' if blob['sign'] > 0 else '-'
+                fig.add_trace(go.Scatter(
+                    x=[blob['x']],
+                    y=[blob['y']],
+                    mode='text',
+                    text=sign_symbol,
+                    textfont=dict(
+                        size=16,
+                        color='white' if blob['sign'] > 0 else 'black'
+                    ),
+                    showlegend=False,
+                    hoverinfo='none'
+                ))
+                
                 # Add variance circle
                 theta = np.linspace(0, 2*np.pi, 50)
                 radius = np.sqrt(blob['variance'] * 2)  # Scale factor for visualization
                 x_circle = blob['x'] + radius * np.cos(theta)
                 y_circle = blob['y'] + radius * np.sin(theta)
                 
+                # Different line style for positive vs negative blobs
+                line_color = 'blue' if blob['sign'] > 0 else 'mediumpurple'
+                line_dash = 'dot' if blob['sign'] > 0 else 'dash'
+                
                 fig.add_trace(go.Scatter(
                     x=x_circle,
                     y=y_circle,
                     mode='lines',
-                    line=dict(color='blue', width=1, dash='dot'),
+                    line=dict(color=line_color, width=1, dash=line_dash),
                     showlegend=False,
                     hoverinfo='none',
                     customdata=[{'type': 'variance', 'dist': 'B', 'id': blob['id']}] * len(theta)
