@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 from models.distribution import Distribution
 from controllers.distribution_controller import DistributionController
 from controllers.app_state import AppState
@@ -593,6 +594,26 @@ class UIComponents:
             on_click=handle_plot_click,
             on_dragend=handle_drag_event
         )
+        
+        # Determine which transport plan is currently selected
+        current_plan = "hide"
+        if AppState.is_showing_bottleneck():
+            current_plan = "bottleneck_spatial"
+        elif AppState.is_showing_wasserstein():
+            current_plan = "wasserstein_spatial"
+        elif AppState.is_showing_height_bottleneck():
+            current_plan = "bottleneck_height"
+        elif AppState.is_showing_height_wasserstein():
+            current_plan = "wasserstein_height"
+            
+        # Render the distance matrices below the plot
+        if current_plan != "hide" and not distribution_a.is_empty and not distribution_b.is_empty:
+            UIComponents.render_distance_matrices(
+                distribution_a, 
+                distribution_b, 
+                calculator, 
+                current_plan
+            )
     
     @staticmethod
     def render_distance_matrices(distribution_a: Distribution, distribution_b: Distribution, 
