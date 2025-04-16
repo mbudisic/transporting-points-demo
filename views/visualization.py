@@ -294,8 +294,8 @@ class VisualizationService:
         
         # Add Wasserstein transport lines if requested
         if show_wasserstein_lines and wasserstein_pairs and not distribution_a.is_empty and not distribution_b.is_empty:
-            # Find max weight for normalization
-            max_weight = max([w for _, _, w in wasserstein_pairs]) if wasserstein_pairs else 0.01
+            # Find max weight for normalization, ensure it's positive to avoid division by zero
+            max_weight = max(max([w for _, _, w in wasserstein_pairs]) if wasserstein_pairs else 0.01, 0.01)
             
             for pair in wasserstein_pairs:
                 idx_a, idx_b, weight = pair
@@ -309,7 +309,8 @@ class VisualizationService:
                     
                     # Determine line width and opacity based on weight
                     line_width = 1 + 4 * normalized_weight
-                    line_opacity = 0.3 + 0.7 * normalized_weight
+                    # Ensure opacity is between 0 and 1
+                    line_opacity = max(0.1, min(1.0, 0.3 + 0.7 * normalized_weight))
                     
                     # Draw a line between the centers
                     fig.add_trace(go.Scatter(
@@ -349,8 +350,8 @@ class VisualizationService:
         
         # Add height-based Wasserstein transport lines if requested (using a different color/style)
         if show_height_wasserstein_lines and height_wasserstein_pairs and not distribution_a.is_empty and not distribution_b.is_empty:
-            # Find max weight for normalization
-            max_weight = max([w for _, _, w in height_wasserstein_pairs]) if height_wasserstein_pairs else 0.01
+            # Find max weight for normalization, ensure it's positive to avoid division by zero
+            max_weight = max(max([w for _, _, w in height_wasserstein_pairs]) if height_wasserstein_pairs else 0.01, 0.01)
             
             for pair in height_wasserstein_pairs:
                 idx_a, idx_b, weight = pair
@@ -364,7 +365,8 @@ class VisualizationService:
                     
                     # Determine line width and opacity based on weight
                     line_width = 1 + 4 * normalized_weight
-                    line_opacity = 0.3 + 0.7 * normalized_weight
+                    # Ensure opacity is between 0 and 1
+                    line_opacity = max(0.1, min(1.0, 0.3 + 0.7 * normalized_weight))
                     
                     # Draw a line between the centers
                     fig.add_trace(go.Scatter(

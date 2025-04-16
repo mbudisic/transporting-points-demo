@@ -478,7 +478,8 @@ class UIComponents:
             if opt["value"] == "hide":
                 option_labels.append(opt["label"])
             else:
-                option_labels.append(f"{opt['label']} <span style='font-size:small;color:gray'>({opt['description']})</span>")
+                # Use plain text format for better compatibility
+                option_labels.append(f"{opt['label']} ({opt['description']})")
         
         # Find the current index
         current_index = 0
@@ -517,12 +518,12 @@ class UIComponents:
                 options=option_labels,
                 index=current_index,
                 key="transport_plan_dropdown",
-                format_func=lambda x: x.split(" <span")[0],  # Show clean label for selectbox display
+                format_func=lambda x: x.split(" (")[0] if " (" in x else x,  # Show clean label without description
                 label_visibility="collapsed"  # Hide the label completely
             )
             
             # Update visualization based on selection
-            selected_label = transport_selection.split(" <span")[0]  # Get clean label
+            selected_label = transport_selection.split(" (")[0] if " (" in transport_selection else transport_selection
             selected_value = option_map[selected_label]
             if selected_value != current_value:
                 AppState.set_transport_visualization(selected_value)
