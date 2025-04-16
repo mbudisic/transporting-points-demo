@@ -308,9 +308,9 @@ class VisualizationService:
                     normalized_weight = weight / max_weight
                     
                     # Determine line width and opacity based on weight
-                    line_width = 1 + 4 * normalized_weight
+                    line_width = max(0.5, 1 + 4 * abs(normalized_weight))
                     # Ensure opacity is between 0 and 1
-                    line_opacity = max(0.1, min(1.0, 0.3 + 0.7 * normalized_weight))
+                    line_opacity = max(0.1, min(1.0, 0.3 + 0.7 * abs(normalized_weight)))
                     
                     # Draw a line between the centers
                     fig.add_trace(go.Scatter(
@@ -364,9 +364,9 @@ class VisualizationService:
                     normalized_weight = weight / max_weight
                     
                     # Determine line width and opacity based on weight
-                    line_width = 1 + 4 * normalized_weight
+                    line_width = max(0.5, 1 + 4 * abs(normalized_weight))
                     # Ensure opacity is between 0 and 1
-                    line_opacity = max(0.1, min(1.0, 0.3 + 0.7 * normalized_weight))
+                    line_opacity = max(0.1, min(1.0, 0.3 + 0.7 * abs(normalized_weight)))
                     
                     # Draw a line between the centers
                     fig.add_trace(go.Scatter(

@@ -63,6 +63,10 @@ class AppState:
         if 'height_wasserstein_pairs' not in st.session_state:
             st.session_state.height_wasserstein_pairs = []
             
+        # Visualization mode (standard or graph)
+        if 'visualization_mode' not in st.session_state:
+            st.session_state.visualization_mode = 'standard'
+            
         if 'selected_element' not in st.session_state:
             st.session_state.selected_element = None
     
