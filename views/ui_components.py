@@ -209,15 +209,15 @@ class UIComponents:
                     with label_col:
                         st.markdown("<span style='font-size: 14px;'>Height:</span>", unsafe_allow_html=True)
                     with slider_col:
-                        # Set the session state value first
-                        st.session_state[f"height_slider_A{blob_id}"] = float(blob.height)
+                        # Set the session state value first with the signed value
+                        st.session_state[f"height_slider_A{blob_id}"] = float(blob.height) * blob.sign
                         
                         # Create height slider that allows for negative values (double-sided)
                         new_height = st.slider(
                             "##", 
                             min_value=-10.0, 
                             max_value=10.0, 
-                            value=float(blob.height), 
+                            value=float(blob.height) * blob.sign, 
                             step=0.1,
                             key=f"height_slider_A{blob_id}",
                             on_change=lambda: DistributionController.update_blob(
@@ -440,20 +440,21 @@ class UIComponents:
                     
                     # Height control
                     with slider_col:
-                        # Set the session state value first
-                        st.session_state[f"height_slider_B{blob_id}"] = float(blob.height)
+                        # Set the session state value first with the signed value
+                        st.session_state[f"height_slider_B{blob_id}"] = float(blob.height) * blob.sign
                         
-                        # Then create the slider with that value
+                        # Create height slider that allows for negative values (double-sided)
                         new_height = st.slider(
                             "##", 
-                            min_value=0.1, 
+                            min_value=-10.0, 
                             max_value=10.0, 
-                            value=float(blob.height), 
+                            value=float(blob.height) * blob.sign, 
                             step=0.1,
                             key=f"height_slider_B{blob_id}",
                             on_change=lambda: DistributionController.update_blob(
                                 distribution, blob_id, 
-                                height=st.session_state[f"height_slider_B{blob_id}"]
+                                height=abs(st.session_state[f"height_slider_B{blob_id}"]),
+                                sign=1 if st.session_state[f"height_slider_B{blob_id}"] >= 0 else -1
                             )
                         )
                     with label_col:

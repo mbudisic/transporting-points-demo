@@ -91,8 +91,9 @@ class VisualizationService:
                 
                 # Add markers for blob centers in distribution A
                 for blob in distribution_a.blobs:
-                    marker_symbol = "circle" if blob.sign > 0 else "x"
+                    marker_symbol = "circle" if blob.sign > 0 else "circle"
                     marker_color = 'rgba(255, 0, 0, 0.8)' if blob.sign > 0 else 'rgba(100, 0, 0, 0.8)'
+                    sign_symbol = "+" if blob.sign > 0 else "-"
                     
                     fig.add_trace(go.Scatter(
                         x=[blob.x],
@@ -105,6 +106,11 @@ class VisualizationService:
                             line=dict(width=2, color='black')
                         ),
                         text=[f"A{blob.id}"],
+                        textfont=dict(
+                            color='rgba(0, 255, 0, 1)',  # Neon green
+                            size=12,
+                            family='Arial Black'
+                        ),
                         textposition="top center",
                         name=f"Blob A{blob.id}",
                         customdata=[[blob.id, 
@@ -187,8 +193,9 @@ class VisualizationService:
                 
                 # Add markers for blob centers in distribution B
                 for blob in distribution_b.blobs:
-                    marker_symbol = "circle" if blob.sign > 0 else "x"
+                    marker_symbol = "circle" if blob.sign > 0 else "circle"
                     marker_color = 'rgba(0, 0, 255, 0.8)' if blob.sign > 0 else 'rgba(0, 0, 100, 0.8)'
+                    sign_symbol = "+" if blob.sign > 0 else "-"
                     
                     fig.add_trace(go.Scatter(
                         x=[blob.x],
@@ -201,6 +208,11 @@ class VisualizationService:
                             line=dict(width=2, color='black')
                         ),
                         text=[f"B{blob.id}"],
+                        textfont=dict(
+                            color='rgba(0, 255, 0, 1)',  # Neon green
+                            size=12,
+                            family='Arial Black'
+                        ),
                         textposition="top center",
                         name=f"Blob B{blob.id}",
                         customdata=[[blob.id, 
