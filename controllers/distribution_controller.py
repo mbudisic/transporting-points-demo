@@ -197,3 +197,27 @@ class DistributionController:
         except Exception as e:
             st.error(f"Error importing data: {str(e)}")
             return False
+    
+    @staticmethod
+    def export_as_document(dist_a: Distribution, dist_b: Distribution, figure: go.Figure = None) -> Dict[str, str]:
+        """
+        Export distributions, metrics, and visualizations to a static document.
+        
+        Args:
+            dist_a: Distribution A
+            dist_b: Distribution B
+            figure: Optional Plotly figure to include in the document
+            
+        Returns:
+            Dictionary with download links for different formats (HTML, JSON, CSV)
+        """
+        if dist_a.is_empty and dist_b.is_empty:
+            return {
+                "html": "No data to export",
+                "json": "No data to export",
+                "csv": "No data to export"
+            }
+        
+        # Use the export_utils functions to create download links
+        download_links = export_to_formats(dist_a, dist_b, figure)
+        return download_links

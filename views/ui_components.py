@@ -556,6 +556,9 @@ class UIComponents:
                         fig, distribution_a, distribution_b, height_wasserstein_pairs, mode='wasserstein'
                     )
                 
+                # Store the figure in session state for export
+                st.session_state.current_figure = fig
+                
                 # Display the figure with a fixed height
                 st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": True})
                 
@@ -873,8 +876,27 @@ class UIComponents:
         with col1:
             st.markdown("### Export Data")
             if not distribution_a.is_empty or not distribution_b.is_empty:
+                # Export as CSV
                 export_link = controller.export_distributions_to_csv(distribution_a, distribution_b)
                 st.markdown(export_link, unsafe_allow_html=True)
+                
+                # Add document export functionality
+                st.markdown("### Export Complete Document")
+                st.markdown("Export all data, metrics, and visualizations as a static document")
+                
+                # Get the current figure from session state if available
+                fig = None
+                if 'current_figure' in st.session_state:
+                    fig = st.session_state.current_figure
+                
+                # Generate the document downloads
+                download_links = controller.export_as_document(distribution_a, distribution_b, fig)
+                
+                # Display the links
+                st.markdown("#### Download Options:")
+                st.markdown(download_links["html"], unsafe_allow_html=True)
+                st.markdown(download_links["json"], unsafe_allow_html=True)
+                st.markdown(download_links["csv"], unsafe_allow_html=True)
             else:
                 st.warning("Add some blobs to export data.")
         
