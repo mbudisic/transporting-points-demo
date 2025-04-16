@@ -64,32 +64,41 @@ class UIComponents:
                 blob_options = list(blob_id_map.keys())
                 
                 if blob_options:
+                    # Initialize the session state variable for selection if it doesn't exist
+                    if "selected_blob_a" not in st.session_state:
+                        st.session_state.selected_blob_a = blob_options[0] if blob_options else None
+                    
+                    # Create function to handle selection change
+                    def on_blob_selection_change_a():
+                        # Get the selected blob from session state
+                        selected_blob = st.session_state.blob_selector_a
+                        if selected_blob:
+                            # Get the ID directly from our mapping
+                            selected_id = blob_id_map[selected_blob]
+                            # Update the global selected element
+                            AppState.set_selected_element('center', 'A', selected_id)
+                            # Don't call on_update() here to avoid recursive rerun
+                    
                     # Find current selection index if there is one
                     selected_element = AppState.get_selected_element()
                     selected_index = 0
+                    
+                    # Update session state based on current app state
                     if (selected_element is not None and selected_element['dist'] == 'A'):
                         for i, opt in enumerate(blob_options):
                             if f"A{selected_element['id']}" in opt:
                                 selected_index = i
+                                st.session_state.selected_blob_a = blob_options[i]
                                 break
-                                
+                    
+                    # Use the selectbox with on_change handler
                     selected_blob = st.selectbox(
                         "Select a blob to manipulate:",
                         options=blob_options,
                         index=selected_index,
-                        key="blob_selector_a"
+                        key="blob_selector_a",
+                        on_change=on_blob_selection_change_a
                     )
-                    
-                    # Get the ID directly from our mapping
-                    if selected_blob:
-                        selected_id = blob_id_map[selected_blob]
-                        
-                        # Update the global selected element if needed
-                        if (selected_element is None or 
-                            selected_element['dist'] != 'A' or 
-                            selected_element['id'] != selected_id):
-                            AppState.set_selected_element('center', 'A', selected_id)
-                            on_update()  # Trigger update to reflect selection change
                 
                 # Remove selected blob button
                 with remove_col:
@@ -307,32 +316,41 @@ class UIComponents:
                 blob_options = list(blob_id_map.keys())
                 
                 if blob_options:
+                    # Initialize the session state variable for selection if it doesn't exist
+                    if "selected_blob_b" not in st.session_state:
+                        st.session_state.selected_blob_b = blob_options[0] if blob_options else None
+                    
+                    # Create function to handle selection change
+                    def on_blob_selection_change_b():
+                        # Get the selected blob from session state
+                        selected_blob = st.session_state.blob_selector_b
+                        if selected_blob:
+                            # Get the ID directly from our mapping
+                            selected_id = blob_id_map[selected_blob]
+                            # Update the global selected element
+                            AppState.set_selected_element('center', 'B', selected_id)
+                            # Don't call on_update() here to avoid recursive rerun
+                    
                     # Find current selection index if there is one
                     selected_element = AppState.get_selected_element()
                     selected_index = 0
+                    
+                    # Update session state based on current app state
                     if (selected_element is not None and selected_element['dist'] == 'B'):
                         for i, opt in enumerate(blob_options):
                             if f"B{selected_element['id']}" in opt:
                                 selected_index = i
+                                st.session_state.selected_blob_b = blob_options[i]
                                 break
-                                
+                    
+                    # Use the selectbox with on_change handler
                     selected_blob = st.selectbox(
                         "Select a blob to manipulate:",
                         options=blob_options,
                         index=selected_index,
-                        key="blob_selector_b"
+                        key="blob_selector_b",
+                        on_change=on_blob_selection_change_b
                     )
-                    
-                    # Get the ID directly from our mapping
-                    if selected_blob:
-                        selected_id = blob_id_map[selected_blob]
-                        
-                        # Update the global selected element if needed
-                        if (selected_element is None or 
-                            selected_element['dist'] != 'B' or 
-                            selected_element['id'] != selected_id):
-                            AppState.set_selected_element('center', 'B', selected_id)
-                            on_update()  # Trigger update to reflect selection change
                 
                 # Remove selected blob button
                 with remove_col:
