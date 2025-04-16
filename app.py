@@ -9,7 +9,7 @@ from typing import Callable, Optional, List, Tuple, Dict, Any, Union
 from models.distribution import Distribution
 from models.blob import Blob
 from controllers.app_state import AppState
-from controllers.pot_distance_calculator import POTDistanceCalculator
+from controllers.pot_distance_calculator_improved import POTDistanceCalculator
 from controllers.distribution_controller import DistributionController
 from controllers.event_handler import EventHandler
 from views.visualization import VisualizationService
