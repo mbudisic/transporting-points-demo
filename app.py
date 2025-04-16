@@ -47,6 +47,10 @@ if 'show_both' not in st.session_state:
 # Initialize the bottleneck matching in the session state
 if 'bottleneck_matching' not in st.session_state:
     st.session_state.bottleneck_matching = []
+    
+# Initialize the transport line visibility
+if 'show_transport_lines' not in st.session_state:
+    st.session_state.show_transport_lines = False
 
 def toggle_active_distribution(dist_name):
     st.session_state.active_distribution = dist_name
@@ -104,6 +108,14 @@ def handle_plot_click(trace, points, state):
     if len(points.point_inds) == 0:
         return
     
+    # Get the button that was used for the click (if available in the state)
+    button = state.get('button', 0) if state and isinstance(state, dict) else 0
+    
+    # Middle click (button = 1) will be used for dragging operations
+    if button == 1:  # Middle button
+        # This is handled in the middle_click_drag function
+        return
+    
     # Check if we clicked on a center or variance circle by examining customdata
     if points.point_inds and hasattr(points, 'customdata') and len(points.customdata) > 0:
         customdata = points.customdata[0]
@@ -114,7 +126,7 @@ def handle_plot_click(trace, points, state):
                 # Don't add a new blob if we clicked on an existing blob or variance circle
                 return
     
-    # If we didn't click on an existing element, add a new blob
+    # If we didn't click on an existing element, add a new blob using left click
     x, y = points.xs[0], points.ys[0]
     add_blob(st.session_state.active_distribution, x, y)
 
@@ -123,6 +135,14 @@ def handle_drag_event(trace, points, state):
     if not points.point_inds or not hasattr(points, 'customdata') or len(points.customdata) == 0:
         return
     
+    # Get the button that was used (if available in the state)
+    button = state.get('button', 0) if state and isinstance(state, dict) else 0
+    
+    # Only handle middle-click drag events (button = 1)
+    # Button 0 = left, 1 = middle, 2 = right
+    if button != 1:
+        return
+        
     # Get the customdata from the first point
     customdata = points.customdata[0]
     
@@ -230,12 +250,15 @@ with st.expander("About this tool"):
     ## How to use:
     
     1. Create Gaussian blobs by clicking on the 2D plane or using the spreadsheet interface
-    2. Drag points to reposition them
-    3. Adjust the spread (variance) by dragging the dotted circles
-    4. Change height/intensity and sign using the spreadsheet
-    5. Switch between distributions A and B or view both simultaneously
-    6. Watch how the distances change in real-time
-    7. Import/export your distributions as CSV files
+    2. Use middle-click (mouse wheel click) to drag blob centers and adjust their positions
+    3. Middle-click and drag the dotted circles to adjust variance (spread)
+    4. Toggle the bottleneck transport lines to visualize optimal matching between distributions
+    5. Change height/intensity and sign using the spreadsheet
+    6. Switch between distributions A and B or view both simultaneously
+    7. Watch how the distances change in real-time
+    8. Import/export your distributions as CSV files
+    
+    **Note:** Middle-click (mouse wheel button) must be used for dragging elements to avoid interference with the regular left-click interface.
     
     The tool calculates distances between both continuous Gaussian mixtures and the discrete weighted centers.
     """)
@@ -346,7 +369,9 @@ with center_col:
         st.session_state.distribution_a,
         st.session_state.distribution_b,
         active_distribution=st.session_state.active_distribution,
-        show_both=st.session_state.show_both
+        show_both=st.session_state.show_both,
+        show_transport_lines=st.session_state.show_transport_lines,
+        matching_pairs=st.session_state.bottleneck_matching if hasattr(st.session_state, 'bottleneck_matching') else []
     )
     
     # Set the dragmode to 'pan' which allows for dragging elements
@@ -408,15 +433,14 @@ with center_col:
             st.metric("Bottleneck Distance", f"{bottleneck_value:.4f}")
             st.info("Largest minimum distance to transform one distribution into another.")
             
-            # Add Show Bottleneck Transport button
-            if st.button("Show Bottleneck Transport Plan"):
-                # Create a visualization of the bottleneck transport plan
-                transport_fig = create_bottleneck_transport_plot(
-                    st.session_state.distribution_a,
-                    st.session_state.distribution_b,
-                    st.session_state.bottleneck_matching
-                )
-                st.plotly_chart(transport_fig, use_container_width=True)
+            # Add Toggle Bottleneck Transport button
+            if st.button("Toggle Bottleneck Transport Lines"):
+                # Toggle the display of transport lines
+                if 'show_transport_lines' not in st.session_state:
+                    st.session_state.show_transport_lines = True
+                else:
+                    st.session_state.show_transport_lines = not st.session_state.show_transport_lines
+                st.rerun()
     else:
         st.warning("Add blobs to both distributions to calculate distances.")
 

@@ -243,7 +243,7 @@ def create_distribution_plot(distribution_a, distribution_b, grid_size=100):
     
     return fig
 
-def create_interactive_plot(distribution_a, distribution_b, active_distribution='A', show_both=True):
+def create_interactive_plot(distribution_a, distribution_b, active_distribution='A', show_both=True, show_transport_lines=False, matching_pairs=None):
     """
     Create an interactive plot that allows users to manipulate the distributions.
     
@@ -252,6 +252,8 @@ def create_interactive_plot(distribution_a, distribution_b, active_distribution=
         distribution_b: Distribution object for the second distribution
         active_distribution: Which distribution is being actively edited
         show_both: Whether to show both distributions or just the active one
+        show_transport_lines: Whether to show the bottleneck transport lines
+        matching_pairs: List of tuples (idx_a, idx_b) indicating matched blob indices
         
     Returns:
         Plotly figure object
@@ -472,6 +474,34 @@ def create_interactive_plot(distribution_a, distribution_b, active_distribution=
         bgcolor="#f8f8f8",
         opacity=0.8
     )
+    
+    # Add bottleneck transport lines if requested
+    if show_transport_lines and matching_pairs:
+        for idx_a, idx_b in matching_pairs:
+            try:
+                # Get the blob objects using their indices
+                if idx_a < len(distribution_a.blobs) and idx_b < len(distribution_b.blobs):
+                    blob_a = distribution_a.blobs[idx_a]
+                    blob_b = distribution_b.blobs[idx_b]
+                    
+                    # Determine line color based on sign
+                    line_color = 'green' if blob_a['sign'] > 0 else 'orange'
+                    line_dash = 'solid'
+                    line_width = 2
+                    
+                    # Draw a line connecting the matched blobs
+                    fig.add_trace(go.Scatter(
+                        x=[blob_a['x'], blob_b['x']],
+                        y=[blob_a['y'], blob_b['y']],
+                        mode='lines',
+                        line=dict(color=line_color, width=line_width, dash=line_dash),
+                        showlegend=False,
+                        hoverinfo='text',
+                        hovertext=f'Match: A{blob_a["id"]} ↔ B{blob_b["id"]}<br>Distance: {((blob_a["x"]-blob_b["x"])**2 + (blob_a["y"]-blob_b["y"])**2)**0.5:.2f}'
+                    ))
+            except (IndexError, KeyError):
+                # Skip invalid indices or missing data
+                continue
     
     # Configure layout
     fig.update_layout(
