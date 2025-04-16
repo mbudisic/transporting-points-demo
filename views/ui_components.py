@@ -473,13 +473,9 @@ class UIComponents:
         option_map = {opt["label"]: opt["value"] for opt in transport_options}
         option_labels = []
         
-        # Create formatted option labels with descriptions
+        # Just use the labels for the dropdown, we'll show descriptions separately
         for opt in transport_options:
-            if opt["value"] == "hide":
-                option_labels.append(opt["label"])
-            else:
-                # Use plain text format for better compatibility
-                option_labels.append(f"{opt['label']} ({opt['description']})")
+            option_labels.append(opt["label"])
         
         # Find the current index
         current_index = 0
@@ -518,13 +514,22 @@ class UIComponents:
                 options=option_labels,
                 index=current_index,
                 key="transport_plan_dropdown",
-                format_func=lambda x: x.split(" (")[0] if " (" in x else x,  # Show clean label without description
                 label_visibility="collapsed"  # Hide the label completely
             )
             
+            # Get the description for the selected option
+            selected_desc = ""
+            for opt in transport_options:
+                if opt["label"] == transport_selection and opt["value"] != "hide":
+                    selected_desc = opt["description"]
+                    break
+            
+            # Display the description if available
+            if selected_desc:
+                st.caption(selected_desc)
+                
             # Update visualization based on selection
-            selected_label = transport_selection.split(" (")[0] if " (" in transport_selection else transport_selection
-            selected_value = option_map[selected_label]
+            selected_value = option_map[transport_selection]
             if selected_value != current_value:
                 AppState.set_transport_visualization(selected_value)
                 # When the visualization changes, set to show both distributions
