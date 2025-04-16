@@ -2,6 +2,7 @@ import numpy as np
 import plotly.graph_objects as go
 from models.distribution import Distribution
 from typing import List, Tuple, Optional, Dict, Any
+from controllers.app_state import AppState
 
 class VisualizationService:
     """
@@ -9,7 +10,7 @@ class VisualizationService:
     """
     
     @staticmethod
-    def create_standard_visualization(dist_a=None, dist_b=None, show_both=True, show_contour_a=False, show_contour_b=False):
+    def create_standard_visualization(dist_a=None, dist_b=None, show_both=True, show_contour_a=False, show_contour_b=False, contour_opacity=0.3):
         """
         Create a standard visualization of the distributions.
         
@@ -19,6 +20,7 @@ class VisualizationService:
             show_both: Whether to show both distributions
             show_contour_a: Whether to show contour plot for Distribution A
             show_contour_b: Whether to show contour plot for Distribution B
+            contour_opacity: Opacity value (0-1) for contour plots
             
         Returns:
             Plotly figure
@@ -35,7 +37,8 @@ class VisualizationService:
             active_distribution=active_distribution,
             show_both=show_both,
             show_contour_a=show_contour_a,
-            show_contour_b=show_contour_b
+            show_contour_b=show_contour_b,
+            contour_opacity=contour_opacity
         )
         
     @staticmethod
@@ -321,7 +324,7 @@ class VisualizationService:
                         x=x_grid,
                         y=y_grid,
                         colorscale='Teal',
-                        opacity=0.3,
+                        opacity=AppState.get_contour_opacity(),
                         showscale=False,
                         contours=dict(
                             coloring='fill',
@@ -425,7 +428,7 @@ class VisualizationService:
                         x=x_grid,
                         y=y_grid,
                         colorscale='Oranges',
-                        opacity=0.3,
+                        opacity=AppState.get_contour_opacity(),
                         showscale=False,
                         contours=dict(
                             coloring='fill',

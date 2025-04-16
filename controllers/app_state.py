@@ -108,6 +108,10 @@ class AppState:
             
         if 'show_contour_b' not in st.session_state:
             st.session_state.show_contour_b = False
+            
+        # Contour plot opacity
+        if 'contour_opacity' not in st.session_state:
+            st.session_state.contour_opacity = 0.3
     
     @staticmethod
     def get_distribution_a() -> Distribution:
@@ -270,3 +274,13 @@ class AppState:
     def toggle_contour_b():
         """Toggle visibility of contour plot for distribution B"""
         st.session_state.show_contour_b = not st.session_state.show_contour_b
+        
+    @staticmethod
+    def get_contour_opacity() -> float:
+        """Get the opacity value for contour plots"""
+        return st.session_state.contour_opacity
+        
+    @staticmethod
+    def set_contour_opacity(opacity: float):
+        """Set the opacity value for contour plots"""
+        st.session_state.contour_opacity = opacity
