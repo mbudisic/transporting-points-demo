@@ -18,7 +18,7 @@ class UIComponents:
             distribution: Distribution A
             on_update: Callback function to call when the distribution is updated
         """
-        st.subheader("Distribution A (Red)")
+        st.subheader("Distribution A (Teal)")
         
         # Create columns for Add/Remove buttons
         add_col, remove_col = st.columns(2)
@@ -242,7 +242,7 @@ class UIComponents:
             distribution: Distribution B
             on_update: Callback function to call when the distribution is updated
         """
-        st.subheader("Distribution B (Blue)")
+        st.subheader("Distribution B (Orange)")
         
         # Create columns for Add/Remove buttons
         add_col, remove_col = st.columns(2)
