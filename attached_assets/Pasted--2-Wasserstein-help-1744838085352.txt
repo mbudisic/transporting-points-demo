@@ -1,0 +1,93 @@
+# -----------------------------------------------------------------------------
+# 2‑Wasserstein helpers
+# -----------------------------------------------------------------------------
+
+def w2_exact(a: np.ndarray, b: np.ndarray, M2: np.ndarray) -> float:
+    """Exact 2‑Wasserstein distance via POT's network simplex."""
+    cost_sq = ot.lp.emd2(a, b, M2)  # squared cost
+    return float(np.sqrt(cost_sq))
+
+
+def w2_sinkhorn(a: np.ndarray, b: np.ndarray, M2: np.ndarray, reg: float = 1e-2) -> float:
+    """Entropic‑regularised approximation of W2 (much faster for large n)."""
+    cost_sq, _ = ot.bregman.sinkhorn2(a, b, M2, reg=reg)
+    return float(np.sqrt(cost_sq))
+
+# -----------------------------------------------------------------------------
+# Winf helpers (works for unequal sizes and non‑uniform weights)
+# -----------------------------------------------------------------------------
+
+def _has_feasible_flow(thresh: float, a: np.ndarray, b: np.ndarray, M: np.ndarray) -> bool:
+    """Check if all mass can be transported using only edges ≤ thresh via max‑flow."""
+    G = nx.DiGraph()
+    src, sink = "S", "T"
+    G.add_node(src)
+    G.add_node(sink)
+
+    # supply arcs (source → x_i)
+    for i, ai in enumerate(a):
+        if ai > 0:
+            G.add_edge(src, ("u", i), capacity=float(ai))
+
+    # demand arcs (y_j → sink)
+    for j, bj in enumerate(b):
+        if bj > 0:
+            G.add_edge(("v", j), sink, capacity=float(bj))
+
+    # transport arcs allowed by the threshold
+    n, m = M.shape
+    for i in range(n):
+        ui = ("u", i)
+        for j in range(m):
+            if M[i, j] <= thresh:
+                vi = ("v", j)
+                G.add_edge(ui, vi, capacity=float("inf"))
+
+    flow_val, _ = maximum_flow(G, src, sink)
+    return flow_val >= a.sum() - 1e-12  # allow tiny numerical slack
+
+
+def winf_bottleneck(a: np.ndarray, b: np.ndarray, M: np.ndarray) -> float:
+    """Exact Winf via binary search + max‑flow feasibility oracle."""
+    levels = np.unique(M)
+    lo, hi = 0, len(levels) - 1
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if _has_feasible_flow(levels[mid], a, b, M):
+            hi = mid  # feasible ⇒ tighten upper bound
+        else:
+            lo = mid + 1
+    return float(levels[lo])
+
+# -----------------------------------------------------------------------------
+# Demo / CLI entry‑point
+# -----------------------------------------------------------------------------
+
+def _demo(seed: int = 0) -> None:
+    rng = np.random.default_rng(seed)
+
+    # Generate point clouds of unequal size (unbalanced scenario)
+    n, m, d = 150, 100, 2
+    x = rng.normal(0, 1, (n, d))
+    y = rng.normal(2, 1, (m, d))
+
+    # Weights (positive, summing to 1)
+    a = rng.random(n)
+    a /= a.sum()
+    b = rng.random(m)
+    b /= b.sum()
+
+    # Pairwise distances
+    M = ot.dist(x, y, metric="euclidean")        # shape (n, m)
+    M2 = M ** 2
+
+    # Compute distances
+    w2      = w2_exact(a, b, M2)
+    w2_fast = w2_sinkhorn(a, b, M2, reg=1e-2)
+    winf    = winf_bottleneck(a, b, M)
+
+    # Report
+    print("Results for random point clouds (n=150, m=100):")
+    print(f"  W2  (exact)           : {w2:.6f}")
+    print(f"  W2  (Sinkhorn, reg=1e-2): {w2_fast:.6f}")
+    print(f"  Winf (bottleneck)      : {winf:.6f}")

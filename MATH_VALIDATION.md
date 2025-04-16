@@ -150,11 +150,11 @@ The application provides three types of export documents, all focused on the cur
 
 ### Source Code for Export Functionality
 
-The export functionality is implemented in `utils/export_utils.py` (lines 12-489). The key functions are:
+The export functionality is implemented in `utils/export_utils.py`. The key functions are:
 
-- `generate_distribution_data()` (lines 12-121): Creates a structured data object with only the selected transport plan
-- `generate_html_report()` (lines 123-385): Generates an HTML report with visualizations and tables
-- `export_to_formats()` (lines 429-489): Creates downloadable files in multiple formats
+- `generate_distribution_data()`: Creates a structured data object with only the selected transport plan
+- `generate_html_report()`: Generates an HTML report with visualizations and tables
+- `export_to_formats()`: Creates downloadable files in multiple formats
 
 ## Python Optimal Transport (POT) Package
 

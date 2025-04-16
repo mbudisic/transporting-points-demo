@@ -3,7 +3,9 @@ from typing import List, Tuple, Dict, Optional, Callable, Any, Union
 from models.distribution import Distribution
 from models.blob import Blob
 import ot
+import networkx as nx
 from scipy.optimize import linear_sum_assignment
+from networkx.algorithms.flow import maximum_flow
 
 class POTDistanceCalculator:
     """
@@ -46,6 +48,105 @@ class POTDistanceCalculator:
         emd_value = ot.emd2(weights_a, weights_b, M)
         
         return float(emd_value)
+    
+    # ---------- Improved W2 and Winf Functions ----------
+    
+    @staticmethod
+    def w2_exact(a: np.ndarray, b: np.ndarray, M2: np.ndarray) -> float:
+        """
+        Exact 2‑Wasserstein distance via POT's network simplex.
+        
+        Args:
+            a: Source weights (normalized to sum to 1)
+            b: Target weights (normalized to sum to 1)
+            M2: Squared cost matrix
+            
+        Returns:
+            2-Wasserstein distance (square root of the optimal cost)
+        """
+        cost_sq = ot.lp.emd2(a, b, M2)  # squared cost
+        return float(np.sqrt(cost_sq))
+
+    @staticmethod
+    def w2_sinkhorn(a: np.ndarray, b: np.ndarray, M2: np.ndarray, reg: float = 1e-2) -> float:
+        """
+        Entropic‑regularised approximation of W2 (much faster for large distributions).
+        
+        Args:
+            a: Source weights (normalized to sum to 1)
+            b: Target weights (normalized to sum to 1)
+            M2: Squared cost matrix
+            reg: Regularization parameter (smaller values give more accurate results but are less stable)
+            
+        Returns:
+            2-Wasserstein distance (square root of the optimal cost)
+        """
+        cost_sq, _ = ot.bregman.sinkhorn2(a, b, M2, reg=reg)
+        return float(np.sqrt(cost_sq))
+        
+    @staticmethod
+    def _has_feasible_flow(thresh: float, a: np.ndarray, b: np.ndarray, M: np.ndarray) -> bool:
+        """
+        Check if all mass can be transported using only edges ≤ thresh via max‑flow.
+        
+        Args:
+            thresh: Distance threshold
+            a: Source weights
+            b: Target weights
+            M: Cost matrix
+            
+        Returns:
+            True if a feasible flow exists with all edges <= thresh, False otherwise
+        """
+        G = nx.DiGraph()
+        src, sink = "S", "T"
+        G.add_node(src)
+        G.add_node(sink)
+
+        # supply arcs (source → x_i)
+        for i, ai in enumerate(a):
+            if ai > 0:
+                G.add_edge(src, ("u", i), capacity=float(ai))
+
+        # demand arcs (y_j → sink)
+        for j, bj in enumerate(b):
+            if bj > 0:
+                G.add_edge(("v", j), sink, capacity=float(bj))
+
+        # transport arcs allowed by the threshold
+        n, m = M.shape
+        for i in range(n):
+            ui = ("u", i)
+            for j in range(m):
+                if M[i, j] <= thresh:
+                    vi = ("v", j)
+                    G.add_edge(ui, vi, capacity=float("inf"))
+
+        flow_val, _ = maximum_flow(G, src, sink)
+        return flow_val >= a.sum() - 1e-12  # allow tiny numerical slack
+        
+    @staticmethod
+    def winf_bottleneck(a: np.ndarray, b: np.ndarray, M: np.ndarray) -> float:
+        """
+        Exact Winf (bottleneck) distance via binary search + max‑flow feasibility oracle.
+        
+        Args:
+            a: Source weights
+            b: Target weights
+            M: Cost matrix
+            
+        Returns:
+            Bottleneck distance
+        """
+        levels = np.unique(M)
+        lo, hi = 0, len(levels) - 1
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if POTDistanceCalculator._has_feasible_flow(levels[mid], a, b, M):
+                hi = mid  # feasible ⇒ tighten upper bound
+            else:
+                lo = mid + 1
+        return float(levels[lo])
     
     # ---------- Utility Functions ----------
     
