@@ -91,8 +91,7 @@ class POTDistanceCalculator:
     
     @staticmethod
     def calculate_wasserstein_plan(dist_a: Distribution, dist_b: Distribution, 
-                                   metric='euclidean', p=2, 
-                                   regularization=0.01) -> Tuple[float, List[Tuple[int, int, float]]]:
+                                   metric='euclidean', p=2) -> Tuple[float, List[Tuple[int, int, float]]]:
         """
         Calculate Wasserstein distance and transportation plan using POT, respecting sign of weights.
         
@@ -101,7 +100,6 @@ class POTDistanceCalculator:
             dist_b: Second distribution
             metric: Distance metric to use ('euclidean', 'sqeuclidean', 'cityblock')
             p: Power for Wasserstein distance (p=1 for EMD, p=2 for Wasserstein-2)
-            regularization: Regularization parameter for Sinkhorn algorithm
             
         Returns:
             A tuple containing (wasserstein_distance, matching_pairs)
@@ -142,9 +140,12 @@ class POTDistanceCalculator:
             a = a / np.sum(a)
             b = b / np.sum(b)
             
-            # Calculate optimal transport plan
-            # Using Sinkhorn algorithm for regularized OT
-            transport_plan = ot.sinkhorn(a, b, cost_matrix, regularization)
+            # Calculate optimal transport plan using the exact EMD solver (more robust than Sinkhorn)
+            transport_plan = ot.emd(a, b, cost_matrix)
+            
+            # Calculate the Wasserstein distance
+            wasserstein_dist = np.sum(transport_plan * cost_matrix)
+            total_distance += wasserstein_dist
             
             # Add matching pairs to result
             for i in range(len(pos_blobs_a)):
@@ -153,7 +154,6 @@ class POTDistanceCalculator:
                         orig_idx_a = pos_indices_a[i]
                         orig_idx_b = pos_indices_b[j]
                         pairs.append((orig_idx_a, orig_idx_b, float(transport_plan[i, j])))
-                        total_distance += cost_matrix[i, j] * transport_plan[i, j]
         
         # Process negative blobs
         if neg_blobs_a and neg_blobs_b:
@@ -168,8 +168,12 @@ class POTDistanceCalculator:
             a = a / np.sum(a)
             b = b / np.sum(b)
             
-            # Calculate optimal transport plan
-            transport_plan = ot.sinkhorn(a, b, cost_matrix, regularization)
+            # Calculate optimal transport plan using the exact EMD solver (more robust than Sinkhorn)
+            transport_plan = ot.emd(a, b, cost_matrix)
+            
+            # Calculate the Wasserstein distance
+            wasserstein_dist = np.sum(transport_plan * cost_matrix)
+            total_distance += wasserstein_dist
             
             # Add matching pairs to result
             for i in range(len(neg_blobs_a)):
@@ -178,7 +182,6 @@ class POTDistanceCalculator:
                         orig_idx_a = neg_indices_a[i]
                         orig_idx_b = neg_indices_b[j]
                         pairs.append((orig_idx_a, orig_idx_b, float(transport_plan[i, j])))
-                        total_distance += cost_matrix[i, j] * transport_plan[i, j]
         
         return total_distance, pairs
     
@@ -264,15 +267,13 @@ class POTDistanceCalculator:
     # ---------- Height-Based Metrics using POT ----------
     
     @staticmethod
-    def calculate_height_wasserstein_plan(dist_a: Distribution, dist_b: Distribution,
-                                         regularization=0.01) -> Tuple[float, List[Tuple[int, int, float]]]:
+    def calculate_height_wasserstein_plan(dist_a: Distribution, dist_b: Distribution) -> Tuple[float, List[Tuple[int, int, float]]]:
         """
         Calculate Wasserstein distance and transportation plan based only on blob heights using POT
         
         Args:
             dist_a: First distribution
             dist_b: Second distribution
-            regularization: Regularization parameter for Sinkhorn algorithm
             
         Returns:
             A tuple containing (wasserstein_distance, matching_pairs)
