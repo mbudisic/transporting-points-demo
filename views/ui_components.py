@@ -532,16 +532,20 @@ class UIComponents:
         has_b = not distribution_b.is_empty
         
         if has_a and has_b:
-            # Calculate distances
+            # Calculate distances based on spatial positions
             wasserstein_continuous = calculator.calculate_wasserstein_continuous(distribution_a, distribution_b)
             wasserstein_discrete = calculator.calculate_wasserstein_discrete(distribution_a, distribution_b)
             bottleneck_value, matching_pairs = calculator.calculate_bottleneck(distribution_a, distribution_b)
             
+            # Calculate distances based on heights only
+            wasserstein_heights = calculator.calculate_wasserstein_by_heights(distribution_a, distribution_b)
+            bottleneck_heights = calculator.calculate_bottleneck_by_heights(distribution_a, distribution_b)
+            
             # Store the bottleneck matching in session state for visualization
             AppState.store_bottleneck_matching(matching_pairs)
             
-            # Display metrics in a box
-            st.markdown("### Distribution Distances")
+            # Display spatial metrics in a box
+            st.markdown("### Spatial Distribution Distances")
             metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
             
             with metrics_col1:
@@ -555,6 +559,18 @@ class UIComponents:
             with metrics_col3:
                 st.metric("Bottleneck Distance", f"{bottleneck_value:.4f}")
                 st.info("Largest minimum distance to transform one distribution into another.")
+            
+            # Display height-based metrics in a separate box
+            st.markdown("### Height-Based Distances")
+            height_col1, height_col2 = st.columns(2)
+            
+            with height_col1:
+                st.metric("Wasserstein (Heights)", f"{wasserstein_heights:.4f}")
+                st.info("Measures minimum 'cost' of transforming heights, ignoring positions.")
+                
+            with height_col2:
+                st.metric("Bottleneck (Heights)", f"{bottleneck_heights:.4f}")
+                st.info("Maximum difference between sorted heights, ignoring positions.")
                 
                 # Calculate Wasserstein transportation plan
                 wasserstein_value, wasserstein_pairs = calculator.calculate_wasserstein_plan(distribution_a, distribution_b)

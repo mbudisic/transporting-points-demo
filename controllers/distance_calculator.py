@@ -36,6 +36,84 @@ class DistanceCalculator:
         return np.sum(np.abs(dist_a_values - dist_b_values))
     
     @staticmethod
+    def calculate_wasserstein_by_heights(dist_a: Distribution, dist_b: Distribution) -> float:
+        """
+        Calculate Wasserstein distance between two distributions based only on blob heights,
+        ignoring spatial positions.
+        
+        Args:
+            dist_a: First distribution
+            dist_b: Second distribution
+            
+        Returns:
+            Wasserstein distance between the height distributions
+        """
+        # Get heights from each distribution
+        heights_a = [blob.height for blob in dist_a.blobs]
+        heights_b = [blob.height for blob in dist_b.blobs]
+        
+        # If either distribution is empty, return 0
+        if not heights_a or not heights_b:
+            return 0.0
+        
+        # Sort heights by absolute value (descending) but keep their signs
+        heights_a.sort(key=lambda h: -abs(h))
+        heights_b.sort(key=lambda h: -abs(h))
+        
+        # Normalize heights
+        sum_abs_a = sum(abs(h) for h in heights_a)
+        sum_abs_b = sum(abs(h) for h in heights_b)
+        
+        if sum_abs_a > 0:
+            heights_a = [h / sum_abs_a for h in heights_a]
+        if sum_abs_b > 0:
+            heights_b = [h / sum_abs_b for h in heights_b]
+        
+        # Calculate Wasserstein distance between height distributions
+        # Pad the shorter list with zeros
+        if len(heights_a) < len(heights_b):
+            heights_a.extend([0] * (len(heights_b) - len(heights_a)))
+        elif len(heights_b) < len(heights_a):
+            heights_b.extend([0] * (len(heights_a) - len(heights_b)))
+        
+        # Sum of absolute differences
+        return sum(abs(a - b) for a, b in zip(heights_a, heights_b))
+    
+    @staticmethod
+    def calculate_bottleneck_by_heights(dist_a: Distribution, dist_b: Distribution) -> float:
+        """
+        Calculate bottleneck distance between two distributions based only on blob heights,
+        ignoring spatial positions.
+        
+        Args:
+            dist_a: First distribution
+            dist_b: Second distribution
+            
+        Returns:
+            Bottleneck distance between the height distributions
+        """
+        # Get heights from each distribution
+        heights_a = [blob.height for blob in dist_a.blobs]
+        heights_b = [blob.height for blob in dist_b.blobs]
+        
+        # If either distribution is empty, return 0
+        if not heights_a or not heights_b:
+            return 0.0
+        
+        # Sort heights by absolute value (descending) but keep their signs
+        heights_a.sort(key=lambda h: -abs(h))
+        heights_b.sort(key=lambda h: -abs(h))
+        
+        # Pad the shorter list with zeros
+        if len(heights_a) < len(heights_b):
+            heights_a.extend([0] * (len(heights_b) - len(heights_a)))
+        elif len(heights_b) < len(heights_a):
+            heights_b.extend([0] * (len(heights_a) - len(heights_b)))
+        
+        # Maximum absolute difference
+        return max(abs(a - b) for a, b in zip(heights_a, heights_b))
+    
+    @staticmethod
     def calculate_wasserstein_discrete(dist_a: Distribution, dist_b: Distribution) -> float:
         """
         Calculate Wasserstein distance between two discrete distributions.
