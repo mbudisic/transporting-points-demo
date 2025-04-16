@@ -237,20 +237,23 @@ with left_col:
         if st.button("Add Blob to A"):
             add_blob('A')
     
-    # Remove selected blob button
-    with remove_col_a:
-        if st.button("Remove Selected Blob", key="remove_selected_a") and st.session_state.selected_element:
-            sel = st.session_state.selected_element
-            if sel['dist'] == 'A':
-                remove_blob('A', sel['id'])
-                st.session_state.selected_element = None
-    
     # Display table for distribution A
     st.markdown("### Distribution A Properties")
     df_a = pd.DataFrame(st.session_state.distribution_a.get_data())
     
     if not df_a.empty:
-        # Show data editor
+        # Initialize selected_id_a in session state if not present
+        if 'selected_id_a' not in st.session_state:
+            st.session_state.selected_id_a = df_a['id'].iloc[0] if not df_a.empty else None
+            
+        # Format the dataframe for display with highlighting for selected row
+        def highlight_selected_row_a(row):
+            if row.name in st.session_state.get('selected_rows_a', []):
+                return ['background-color: rgba(255, 192, 192, 0.5); font-weight: bold'] * len(row)
+            return [''] * len(row)
+            
+        # Show data editor with ability to select rows
+        st.caption("Click on a row to select a blob for manipulation")
         edited_df_a = st.data_editor(
             df_a,
             use_container_width=True,
@@ -258,6 +261,10 @@ with left_col:
             num_rows="fixed", 
             disabled=["id"],
             key="data_editor_a",
+            on_change=lambda: setattr(st.session_state, 'selected_id_a', 
+                                      int(df_a['id'].iloc[st.session_state.data_editor_a['edited_rows'][0]]) 
+                                      if st.session_state.data_editor_a.get('edited_rows') else 
+                                      st.session_state.get('selected_id_a')),
             column_config={
                 "id": st.column_config.NumberColumn("ID", min_value=0, format="%d"),
                 "x": st.column_config.NumberColumn("X", min_value=0, max_value=10, format="%.2f"),
@@ -268,42 +275,112 @@ with left_col:
             }
         )
         
-        # Add a selectbox to choose which blob to edit
-        st.markdown("#### Select Blob to Manipulate")
-        
-        # Create a mapping of blob IDs to display names
-        blob_id_map = {f"Blob A{int(row['id'])}": int(row['id']) for _, row in df_a.iterrows()}
-        blob_options = list(blob_id_map.keys())
-        
-        if blob_options:
-            # Find current selection index if there is one
-            selected_index = 0
-            if (st.session_state.selected_element is not None and 
-                st.session_state.selected_element['dist'] == 'A'):
-                for i, opt in enumerate(blob_options):
-                    if f"A{st.session_state.selected_element['id']}" in opt:
-                        selected_index = i
-                        break
-                        
-            selected_blob = st.selectbox(
-                "Select a blob to manipulate:",
-                options=blob_options,
-                index=selected_index,
-                key="blob_selector_a"
-            )
+        # Set the selected element for direct manipulation based on data editor interaction
+        if 'selected_id_a' in st.session_state and st.session_state.selected_id_a is not None:
+            selected_id = st.session_state.selected_id_a
             
-            # Get the ID directly from our mapping
-            if selected_blob:
-                selected_id = blob_id_map[selected_blob]
+            # Update the global selected element if needed
+            if (st.session_state.selected_element is None or 
+                st.session_state.selected_element['dist'] != 'A' or 
+                st.session_state.selected_element['id'] != selected_id):
+                st.session_state.selected_element = {
+                    'type': 'center',  # Default to center
+                    'dist': 'A',
+                    'id': selected_id
+                }
+        
+        # Remove selected blob button
+        with remove_col_a:
+            if st.button("Remove Selected Blob", key="remove_selected_a"):
+                if st.session_state.selected_element and st.session_state.selected_element['dist'] == 'A':
+                    remove_blob('A', st.session_state.selected_element['id'])
+                    st.session_state.selected_element = None
+                    # Rerun to update UI
+                    st.rerun()
                 
-                if (st.session_state.selected_element is None or 
-                    st.session_state.selected_element['dist'] != 'A' or 
-                    st.session_state.selected_element['id'] != selected_id):
-                    st.session_state.selected_element = {
-                        'type': 'center',  # Default to center - user can change to variance via UI
-                        'dist': 'A',
-                        'id': selected_id
-                    }
+        # Add sliders for direct manipulation
+        st.markdown("### Direct Controls")
+        
+        # Get the current blob if any is selected
+        if st.session_state.selected_element and st.session_state.selected_element['dist'] == 'A':
+            blob_id = st.session_state.selected_element['id']
+            
+            # Find the blob in the distribution
+            for blob in st.session_state.distribution_a.blobs:
+                if blob['id'] == blob_id:
+                    st.write(f"**Selected Blob: A{blob_id}** (Height: {blob['height']:.2f}, Sign: {blob['sign']})")
+                    
+                    # Position controls (X, Y)
+                    st.markdown("#### Position")
+                    pos_col1, pos_col2 = st.columns(2)
+                    
+                    with pos_col1:
+                        new_x = st.slider(
+                            "X Position", 
+                            min_value=0.0, 
+                            max_value=10.0, 
+                            value=float(blob['x']), 
+                            step=0.1, 
+                            key=f"x_slider_A{blob_id}",
+                            on_change=lambda: update_blob('A', blob_id, 
+                                                        x=st.session_state[f"x_slider_A{blob_id}"])
+                        )
+                    
+                    with pos_col2:
+                        new_y = st.slider(
+                            "Y Position", 
+                            min_value=0.0, 
+                            max_value=10.0, 
+                            value=float(blob['y']), 
+                            step=0.1,
+                            key=f"y_slider_A{blob_id}",
+                            on_change=lambda: update_blob('A', blob_id, 
+                                                        y=st.session_state[f"y_slider_A{blob_id}"])
+                        )
+                    
+                    # Variance control
+                    st.markdown("#### Spread")
+                    new_variance = st.slider(
+                        "Variance", 
+                        min_value=0.1, 
+                        max_value=5.0, 
+                        value=float(blob['variance']), 
+                        step=0.1,
+                        key=f"var_slider_A{blob_id}",
+                        on_change=lambda: update_blob('A', blob_id, 
+                                                    variance=st.session_state[f"var_slider_A{blob_id}"])
+                    )
+                    
+                    # Height and sign controls
+                    st.markdown("#### Height")
+                    height_col1, height_col2 = st.columns(2)
+                    
+                    with height_col1:
+                        new_height = st.slider(
+                            "Magnitude", 
+                            min_value=0.1, 
+                            max_value=10.0, 
+                            value=float(blob['height']), 
+                            step=0.1,
+                            key=f"height_slider_A{blob_id}",
+                            on_change=lambda: update_blob('A', blob_id, 
+                                                        height=st.session_state[f"height_slider_A{blob_id}"])
+                        )
+                    
+                    with height_col2:
+                        new_sign = st.selectbox(
+                            "Sign", 
+                            options=[1, -1],
+                            index=0 if blob['sign'] > 0 else 1,
+                            key=f"sign_selector_A{blob_id}",
+                            on_change=lambda: update_blob('A', blob_id, 
+                                                        sign=st.session_state[f"sign_selector_A{blob_id}"])
+                        )
+                    break
+            else:
+                st.warning("No blob selected. Click on a row in the table to select a blob.")
+        else:
+            st.info("No blob selected. Click on a row in the table to select a blob.")
                 
         # Update distribution based on edited dataframe
         for index, row in edited_df_a.iterrows():
@@ -323,20 +400,23 @@ with right_col:
         if st.button("Add Blob to B"):
             add_blob('B')
     
-    # Remove selected blob button
-    with remove_col_b:
-        if st.button("Remove Selected Blob", key="remove_selected_b") and st.session_state.selected_element:
-            sel = st.session_state.selected_element
-            if sel['dist'] == 'B':
-                remove_blob('B', sel['id'])
-                st.session_state.selected_element = None
-    
     # Display table for distribution B
     st.markdown("### Distribution B Properties")
     df_b = pd.DataFrame(st.session_state.distribution_b.get_data())
     
     if not df_b.empty:
-        # Show data editor
+        # Initialize selected_id_b in session state if not present
+        if 'selected_id_b' not in st.session_state:
+            st.session_state.selected_id_b = df_b['id'].iloc[0] if not df_b.empty else None
+            
+        # Format the dataframe for display with highlighting for selected row
+        def highlight_selected_row_b(row):
+            if row.name in st.session_state.get('selected_rows_b', []):
+                return ['background-color: rgba(192, 192, 255, 0.5); font-weight: bold'] * len(row)
+            return [''] * len(row)
+            
+        # Show data editor with ability to select rows
+        st.caption("Click on a row to select a blob for manipulation")
         edited_df_b = st.data_editor(
             df_b,
             use_container_width=True,
@@ -344,6 +424,10 @@ with right_col:
             num_rows="fixed", 
             disabled=["id"],
             key="data_editor_b",
+            on_change=lambda: setattr(st.session_state, 'selected_id_b', 
+                                      int(df_b['id'].iloc[st.session_state.data_editor_b['edited_rows'][0]]) 
+                                      if st.session_state.data_editor_b.get('edited_rows') else 
+                                      st.session_state.get('selected_id_b')),
             column_config={
                 "id": st.column_config.NumberColumn("ID", min_value=0, format="%d"),
                 "x": st.column_config.NumberColumn("X", min_value=0, max_value=10, format="%.2f"),
@@ -354,42 +438,112 @@ with right_col:
             }
         )
         
-        # Add a selectbox to choose which blob to edit
-        st.markdown("#### Select Blob to Manipulate")
-        
-        # Create a mapping of blob IDs to display names
-        blob_id_map = {f"Blob B{int(row['id'])}": int(row['id']) for _, row in df_b.iterrows()}
-        blob_options = list(blob_id_map.keys())
-        
-        if blob_options:
-            # Find current selection index if there is one
-            selected_index = 0
-            if (st.session_state.selected_element is not None and 
-                st.session_state.selected_element['dist'] == 'B'):
-                for i, opt in enumerate(blob_options):
-                    if f"B{st.session_state.selected_element['id']}" in opt:
-                        selected_index = i
-                        break
-                        
-            selected_blob = st.selectbox(
-                "Select a blob to manipulate:",
-                options=blob_options,
-                index=selected_index,
-                key="blob_selector_b"
-            )
+        # Set the selected element for direct manipulation based on data editor interaction
+        if 'selected_id_b' in st.session_state and st.session_state.selected_id_b is not None:
+            selected_id = st.session_state.selected_id_b
             
-            # Get the ID directly from our mapping
-            if selected_blob:
-                selected_id = blob_id_map[selected_blob]
+            # Update the global selected element if needed
+            if (st.session_state.selected_element is None or 
+                st.session_state.selected_element['dist'] != 'B' or 
+                st.session_state.selected_element['id'] != selected_id):
+                st.session_state.selected_element = {
+                    'type': 'center',  # Default to center
+                    'dist': 'B',
+                    'id': selected_id
+                }
+        
+        # Remove selected blob button
+        with remove_col_b:
+            if st.button("Remove Selected Blob", key="remove_selected_b"):
+                if st.session_state.selected_element and st.session_state.selected_element['dist'] == 'B':
+                    remove_blob('B', st.session_state.selected_element['id'])
+                    st.session_state.selected_element = None
+                    # Rerun to update UI
+                    st.rerun()
                 
-                if (st.session_state.selected_element is None or 
-                    st.session_state.selected_element['dist'] != 'B' or 
-                    st.session_state.selected_element['id'] != selected_id):
-                    st.session_state.selected_element = {
-                        'type': 'center',  # Default to center - user can change to variance via UI
-                        'dist': 'B',
-                        'id': selected_id
-                    }
+        # Add sliders for direct manipulation
+        st.markdown("### Direct Controls")
+        
+        # Get the current blob if any is selected
+        if st.session_state.selected_element and st.session_state.selected_element['dist'] == 'B':
+            blob_id = st.session_state.selected_element['id']
+            
+            # Find the blob in the distribution
+            for blob in st.session_state.distribution_b.blobs:
+                if blob['id'] == blob_id:
+                    st.write(f"**Selected Blob: B{blob_id}** (Height: {blob['height']:.2f}, Sign: {blob['sign']})")
+                    
+                    # Position controls (X, Y)
+                    st.markdown("#### Position")
+                    pos_col1, pos_col2 = st.columns(2)
+                    
+                    with pos_col1:
+                        new_x = st.slider(
+                            "X Position", 
+                            min_value=0.0, 
+                            max_value=10.0, 
+                            value=float(blob['x']), 
+                            step=0.1, 
+                            key=f"x_slider_B{blob_id}",
+                            on_change=lambda: update_blob('B', blob_id, 
+                                                        x=st.session_state[f"x_slider_B{blob_id}"])
+                        )
+                    
+                    with pos_col2:
+                        new_y = st.slider(
+                            "Y Position", 
+                            min_value=0.0, 
+                            max_value=10.0, 
+                            value=float(blob['y']), 
+                            step=0.1,
+                            key=f"y_slider_B{blob_id}",
+                            on_change=lambda: update_blob('B', blob_id, 
+                                                        y=st.session_state[f"y_slider_B{blob_id}"])
+                        )
+                    
+                    # Variance control
+                    st.markdown("#### Spread")
+                    new_variance = st.slider(
+                        "Variance", 
+                        min_value=0.1, 
+                        max_value=5.0, 
+                        value=float(blob['variance']), 
+                        step=0.1,
+                        key=f"var_slider_B{blob_id}",
+                        on_change=lambda: update_blob('B', blob_id, 
+                                                    variance=st.session_state[f"var_slider_B{blob_id}"])
+                    )
+                    
+                    # Height and sign controls
+                    st.markdown("#### Height")
+                    height_col1, height_col2 = st.columns(2)
+                    
+                    with height_col1:
+                        new_height = st.slider(
+                            "Magnitude", 
+                            min_value=0.1, 
+                            max_value=10.0, 
+                            value=float(blob['height']), 
+                            step=0.1,
+                            key=f"height_slider_B{blob_id}",
+                            on_change=lambda: update_blob('B', blob_id, 
+                                                        height=st.session_state[f"height_slider_B{blob_id}"])
+                        )
+                    
+                    with height_col2:
+                        new_sign = st.selectbox(
+                            "Sign", 
+                            options=[1, -1],
+                            index=0 if blob['sign'] > 0 else 1,
+                            key=f"sign_selector_B{blob_id}",
+                            on_change=lambda: update_blob('B', blob_id, 
+                                                        sign=st.session_state[f"sign_selector_B{blob_id}"])
+                        )
+                    break
+            else:
+                st.warning("No blob selected. Click on a row in the table to select a blob.")
+        else:
+            st.info("No blob selected. Click on a row in the table to select a blob.")
                 
         # Update distribution based on edited dataframe
         for index, row in edited_df_b.iterrows():
@@ -440,115 +594,6 @@ with center_col:
         on_click=handle_plot_click,
         on_dragend=handle_drag_event  # Add drag event handler
     )
-    
-    # Add direct manipulation controls if an element is selected
-    if st.session_state.selected_element:
-        st.markdown("### Direct Manipulation Controls")
-        sel = st.session_state.selected_element
-        dist_name = sel['dist']
-        blob_id = sel['id']
-        element_type = sel['type']
-        
-        # Get the selected distribution
-        distribution = st.session_state.distribution_a if dist_name == 'A' else st.session_state.distribution_b
-        
-        # Find the selected blob
-        for blob in distribution.blobs:
-            if blob['id'] == blob_id:
-                st.write(f"Selected Blob: {dist_name}{blob_id} (Height: {blob['height']:.2f}, Sign: {blob['sign']})")
-                
-                # Add radio button to select what property to adjust
-                property_to_adjust = st.radio(
-                    "Adjust property:",
-                    ["Position", "Variance", "Height"],
-                    index=0 if element_type == 'center' else 1,
-                    key=f"property_selector_{dist_name}{blob_id}",
-                    horizontal=True
-                )
-                
-                # Update element type based on selection
-                if property_to_adjust == "Position" and element_type != 'center':
-                    st.session_state.selected_element['type'] = 'center'
-                    element_type = 'center'
-                elif property_to_adjust == "Variance" and element_type != 'variance':
-                    st.session_state.selected_element['type'] = 'variance'
-                    element_type = 'variance'
-                
-                # Different controls based on property to adjust
-                if property_to_adjust == "Position":
-                    # Create a two-column layout for X and Y sliders
-                    slider_col1, slider_col2 = st.columns(2)
-                    
-                    with slider_col1:
-                        new_x = st.slider(
-                            "X Position", 
-                            min_value=0.0, 
-                            max_value=10.0, 
-                            value=float(blob['x']), 
-                            step=0.1, 
-                            key=f"x_slider_{dist_name}{blob_id}"
-                        )
-                    
-                    with slider_col2:
-                        new_y = st.slider(
-                            "Y Position", 
-                            min_value=0.0, 
-                            max_value=10.0, 
-                            value=float(blob['y']), 
-                            step=0.1,
-                            key=f"y_slider_{dist_name}{blob_id}"
-                        )
-                    
-                    # Apply changes button
-                    if st.button("Apply Position Changes", key=f"apply_pos_{dist_name}{blob_id}"):
-                        update_blob(dist_name, blob_id, x=new_x, y=new_y)
-                
-                elif property_to_adjust == "Variance":
-                    new_variance = st.slider(
-                        "Variance (spread)", 
-                        min_value=0.1, 
-                        max_value=5.0, 
-                        value=float(blob['variance']), 
-                        step=0.1,
-                        key=f"var_slider_{dist_name}{blob_id}"
-                    )
-                    
-                    # Apply changes button 
-                    if st.button("Apply Variance Changes", key=f"apply_var_{dist_name}{blob_id}"):
-                        update_blob(dist_name, blob_id, variance=new_variance)
-                
-                elif property_to_adjust == "Height":
-                    # Add sliders for height and sign
-                    height_slider_col, sign_slider_col = st.columns(2)
-                    
-                    with height_slider_col:
-                        new_height = st.slider(
-                            "Height", 
-                            min_value=0.1, 
-                            max_value=10.0, 
-                            value=float(blob['height']), 
-                            step=0.1,
-                            key=f"height_slider_{dist_name}{blob_id}"
-                        )
-                    
-                    with sign_slider_col:
-                        new_sign = st.selectbox(
-                            "Sign", 
-                            options=[1, -1],
-                            index=0 if blob['sign'] > 0 else 1,
-                            key=f"sign_selector_{dist_name}{blob_id}"
-                        )
-                    
-                    # Apply changes button 
-                    if st.button("Apply Height Changes", key=f"apply_height_{dist_name}{blob_id}"):
-                        update_blob(dist_name, blob_id, height=new_height, sign=new_sign)
-                
-                # Clear selection button at the bottom
-                if st.button("Clear Selection", key=f"clear_{dist_name}{blob_id}"):
-                    st.session_state.selected_element = None
-                    st.rerun()
-                
-                break
     
     # Calculate and display distances
     has_a = len(st.session_state.distribution_a.blobs) > 0
