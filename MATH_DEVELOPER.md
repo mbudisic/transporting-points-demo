@@ -15,6 +15,9 @@ The application follows an MVC (Model-View-Controller) architecture:
 - **Controllers** (`controllers/`): Implement business logic and calculations
   - `controllers/distance_calculator.py`: Contains all distance metric implementations
   - `controllers/app_state.py`: Manages application state across the Streamlit app
+  - `controllers/distribution_controller.py`: Handles distribution operations and export functionality
+- **Utilities** (`utils/`): Provide helper functions
+  - `utils/export_utils.py`: Contains the focused export functionality (lines 12-489)
 
 Mathematical operations are primarily located in the `controllers/distance_calculator.py` file (lines 1-586), which contains the `DistanceCalculator` class with the following key methods:
 
@@ -241,12 +244,42 @@ To test your new distance metric:
    - The transportation plan is visualized correctly
    - The distance matrices show the correct values and highlighted cells
 
+## Extending the Export Functionality
+
+The export functionality is designed to focus only on the currently selected transport plan. If you add a new distance metric, you'll need to update the export functionality to include it:
+
+1. Open `utils/export_utils.py`
+2. Update the `generate_distribution_data` function (lines 12-121) to handle your new transport plan:
+
+```python
+elif selected_transport == "your_new_distance":
+    distance_value, matching_pairs = DistanceCalculator.calculate_your_new_distance(dist_a, dist_b)
+    plan_explanation = DistanceCalculator.explain_matching(dist_a, dist_b, matching_pairs)
+    distance_matrix, idx_a, idx_b = DistanceCalculator.get_distance_matrix(dist_a, dist_b, 'spatial')
+    metric_name = "Your New Distance"
+```
+
+3. Update the `export_to_formats` function (lines 429-489) to detect your new transport mode:
+
+```python
+elif AppState.is_showing_your_new_distance():
+    current_plan = "your_new_distance"
+```
+
+4. Update the `generate_html_report` function (lines 123-385) to include your new transport plan:
+
+```python
+elif AppState.is_showing_your_new_distance():
+    current_plan = "your_new_distance"
+```
+
 ## Best Practices
 
 1. **Documentation**: Include clear documentation for your new method, explaining the mathematical formulation
 2. **Edge Cases**: Handle edge cases (empty distributions, single-point distributions, etc.)
 3. **Efficiency**: Optimize your algorithm for performance, especially for larger distributions
 4. **Visual Consistency**: Follow the existing visual language for displaying transportation plans
+5. **Export Consistency**: Ensure your new distance metric integrates with the focused export functionality
 
 ## Additional Resources
 

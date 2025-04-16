@@ -54,8 +54,11 @@ To validate the implementation:
 
 ### Step 3: Export Data and Verify
 
-1. Use the "Export Data" button to download the current distributions as a CSV file
-2. The file contains the exact coordinates, heights, and variances used in calculations
+1. Use the "Export Data" section to download the current distributions:
+   - HTML Report: Contains a comprehensive report focusing on the currently selected transport plan
+   - JSON Data: Contains structured data of distributions and the selected transport plan
+   - CSV File: Contains the exact coordinates, heights, and variances of all blobs
+2. The exports only include information about the currently selected transport plan, its distance matrices, and optimal value
 3. Perform your own calculations using this data
 4. Compare with the displayed results in the application
 
@@ -119,10 +122,37 @@ The height differences are:
 - A2 to B2: |-0.5 - (-0.3)| = 0.2
 The bottleneck value is 0.2.
 
+## Validating Export Documents
+
+The application provides three types of export documents, all focused on the currently selected transport plan:
+
+1. **HTML Report**: Contains a comprehensive report of the distributions and the selected transport plan
+   - Check that exported distance matrices match what's shown in the UI
+   - Verify that the transport plan shown is only for the selected visualization mode
+   - Check the metric value displayed in the report against the value in the UI
+
+2. **JSON Data**: Contains structured data for programmatic analysis
+   - All distance calculations and matchings are available for further analysis
+   - The structure includes only data for the currently selected transport plan
+   - Use this for automated validation scripts or more complex verifications
+
+3. **CSV Export**: Contains blob-level data for all blobs in both distributions
+   - Use this to reconstruct the distributions in other software
+   - Perform independent distance calculations and compare the results
+
+### Source Code for Export Functionality
+
+The export functionality is implemented in `utils/export_utils.py` (lines 12-489). The key functions are:
+
+- `generate_distribution_data()` (lines 12-121): Creates a structured data object with only the selected transport plan
+- `generate_html_report()` (lines 123-385): Generates an HTML report with visualizations and tables
+- `export_to_formats()` (lines 429-489): Creates downloadable files in multiple formats
+
 ## Getting Support
 
 If you find discrepancies between your calculations and the application:
 
 1. Check the "Distance Matrices" tab to see the raw distance values used
-2. Verify that you're using the same mathematical formulation
-3. If issues persist, check the calculation methods in `controllers/distance_calculator.py`
+2. Verify that you're using the same mathematical formulation 
+3. Examine the exported documents for more detailed information
+4. If issues persist, check the calculation methods in `controllers/distance_calculator.py`
