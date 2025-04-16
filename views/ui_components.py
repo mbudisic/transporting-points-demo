@@ -118,25 +118,17 @@ class UIComponents:
                 blob = distribution.get_blob(blob_id)
                 
                 if blob:
-                    st.write(f"**Selected Blob: A{blob_id}** (Height: {blob.height:.2f}, Sign: {blob.sign})")
+                    st.write(f"**Selected Blob: A{blob_id}** (Height: {blob.height:.2f})")
                     
-                    # Stacked controls with labels on the left (for Distribution A)
+                    # Row-based controls with labels aligned with their sliders
                     st.markdown("#### Blob Controls")
                     
-                    # Create label and slider columns
-                    label_col, slider_col = st.columns([1, 3])
-                    
-                    # Initialize slider state keys if they don't exist
-                    # No need to pre-initialize sliders with default values
-                    # as we'll set specific values before creating each slider
-                    
-                    # No need to pre-initialize sign selector state
-                    # as we'll set the specific value before creating the selectbox
-                    
-                    # X Position
-                    with label_col:
-                        st.markdown("<span style='font-size: 14px;'>X:</span>", unsafe_allow_html=True)
-                    with slider_col:
+                    # X Position - in a row with label
+                    x_row = st.container()
+                    x_label, x_slider = x_row.columns([1, 3])
+                    with x_label:
+                        st.markdown("X:")
+                    with x_slider:
                         # Set the session state value first
                         st.session_state[f"x_slider_A{blob_id}"] = float(blob.x)
                         
@@ -154,11 +146,13 @@ class UIComponents:
                             )
                         )
                     
-                    # Y Position
-                    with label_col:
-                        st.markdown("<span style='font-size: 14px;'>Y:</span>", unsafe_allow_html=True)
-                    with slider_col:
-                        # Set the session state value first
+                    # Y Position - in a row with label
+                    y_row = st.container()
+                    y_label, y_slider = y_row.columns([1, 3])
+                    with y_label:
+                        st.markdown("Y:")
+                    with y_slider:
+                        # Set the session state value first 
                         st.session_state[f"y_slider_A{blob_id}"] = float(blob.y)
                         
                         # Then create the slider with that value
@@ -175,10 +169,12 @@ class UIComponents:
                             )
                         )
                     
-                    # Variance control
-                    with label_col:
-                        st.markdown("<span style='font-size: 14px;'>Var:</span>", unsafe_allow_html=True)
-                    with slider_col:
+                    # Variance control - in a row with label
+                    var_row = st.container()
+                    var_label, var_slider = var_row.columns([1, 3])
+                    with var_label:
+                        st.markdown("Var:")
+                    with var_slider:
                         # Set the session state value first
                         st.session_state[f"var_slider_A{blob_id}"] = float(blob.variance)
                         
@@ -196,25 +192,26 @@ class UIComponents:
                             )
                         )
                     
-                    # Height control
-                    with label_col:
-                        st.markdown("<span style='font-size: 14px;'>Height:</span>", unsafe_allow_html=True)
-                    with slider_col:
-                        # Set the session state value first with the signed value
-                        st.session_state[f"height_slider_A{blob_id}"] = float(blob.height) * blob.sign
+                    # Height control (double-sided slider) - in a row with label
+                    height_row = st.container()
+                    height_label, height_slider = height_row.columns([1, 3])
+                    with height_label:
+                        st.markdown("Height:")
+                    with height_slider:
+                        # Set the session state value directly with the signed height
+                        st.session_state[f"height_slider_A{blob_id}"] = float(blob.height)
                         
                         # Create height slider that allows for negative values (double-sided)
                         new_height = st.slider(
                             "##", 
                             min_value=-10.0, 
                             max_value=10.0, 
-                            value=float(blob.height) * blob.sign, 
+                            value=float(blob.height), 
                             step=0.1,
                             key=f"height_slider_A{blob_id}",
                             on_change=lambda: DistributionController.update_blob(
                                 distribution, blob_id, 
-                                height=abs(st.session_state[f"height_slider_A{blob_id}"]),
-                                sign=1 if st.session_state[f"height_slider_A{blob_id}"] >= 0 else -1
+                                height=st.session_state[f"height_slider_A{blob_id}"]
                             )
                         )
                 else:
