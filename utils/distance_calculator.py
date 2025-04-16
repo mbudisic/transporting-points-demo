@@ -104,9 +104,10 @@ def calculate_wasserstein_discrete(centers_a: List[Tuple[float, float]],
 def calculate_bottleneck(centers_a: List[Tuple[float, float]], 
                         centers_b: List[Tuple[float, float]],
                         weights_a: List[float], 
-                        weights_b: List[float]) -> float:
+                        weights_b: List[float]) -> tuple:
     """
-    Calculate bottleneck distance between two distributions.
+    Calculate bottleneck distance between two distributions, respecting the sign of the weights.
+    Positive centers are matched only with positive centers, and negative centers with negative centers.
     
     Args:
         centers_a: List of centers (x, y) for distribution A
@@ -115,22 +116,71 @@ def calculate_bottleneck(centers_a: List[Tuple[float, float]],
         weights_b: Weights for centers in distribution B
         
     Returns:
-        Bottleneck distance between the distributions
+        A tuple containing (bottleneck_distance, matching_pairs)
+        where matching_pairs is a list of tuples (idx_a, idx_b) indicating the optimal matching
     """
     if not centers_a or not centers_b:
-        return 0.0
+        return 0.0, []
     
-    # Convert centers to numpy arrays
+    # Convert centers and weights to numpy arrays
     centers_a_np = np.array(centers_a)
     centers_b_np = np.array(centers_b)
+    weights_a_np = np.array(weights_a)
+    weights_b_np = np.array(weights_b)
     
-    # Create cost matrix (Euclidean distances between all pairs of centers)
-    cost_matrix = cdist(centers_a_np, centers_b_np)
+    # Separate positive and negative centers
+    pos_indices_a = [i for i, w in enumerate(weights_a_np) if w > 0]
+    neg_indices_a = [i for i, w in enumerate(weights_a_np) if w < 0]
+    pos_indices_b = [i for i, w in enumerate(weights_b_np) if w > 0]
+    neg_indices_b = [i for i, w in enumerate(weights_b_np) if w < 0]
     
-    # Solve the linear assignment problem
-    row_ind, col_ind = linear_sum_assignment(cost_matrix)
+    # Initialize variables to store results
+    bottleneck_dist = 0.0
+    matching_pairs = []
     
-    # Bottleneck distance is the maximum cost in the optimal assignment
-    bottleneck_dist = cost_matrix[row_ind, col_ind].max()
+    # Process positive centers if both distributions have them
+    if pos_indices_a and pos_indices_b:
+        # Extract positive centers from both distributions
+        pos_centers_a = centers_a_np[pos_indices_a]
+        pos_centers_b = centers_b_np[pos_indices_b]
+        
+        # Create cost matrix for positive centers
+        pos_cost_matrix = cdist(pos_centers_a, pos_centers_b)
+        
+        # Solve the linear assignment problem for positive centers
+        pos_row_ind, pos_col_ind = linear_sum_assignment(pos_cost_matrix)
+        
+        # Get the maximum cost in the optimal assignment for positive centers
+        if len(pos_row_ind) > 0:
+            pos_bottleneck_dist = pos_cost_matrix[pos_row_ind, pos_col_ind].max()
+            bottleneck_dist = max(bottleneck_dist, pos_bottleneck_dist)
+            
+            # Store the matching pairs
+            for i, j in zip(pos_row_ind, pos_col_ind):
+                matching_pairs.append((pos_indices_a[i], pos_indices_b[j]))
     
-    return bottleneck_dist
+    # Process negative centers if both distributions have them
+    if neg_indices_a and neg_indices_b:
+        # Extract negative centers from both distributions
+        neg_centers_a = centers_a_np[neg_indices_a]
+        neg_centers_b = centers_b_np[neg_indices_b]
+        
+        # Create cost matrix for negative centers
+        neg_cost_matrix = cdist(neg_centers_a, neg_centers_b)
+        
+        # Solve the linear assignment problem for negative centers
+        neg_row_ind, neg_col_ind = linear_sum_assignment(neg_cost_matrix)
+        
+        # Get the maximum cost in the optimal assignment for negative centers
+        if len(neg_row_ind) > 0:
+            neg_bottleneck_dist = neg_cost_matrix[neg_row_ind, neg_col_ind].max()
+            bottleneck_dist = max(bottleneck_dist, neg_bottleneck_dist)
+            
+            # Store the matching pairs
+            for i, j in zip(neg_row_ind, neg_col_ind):
+                matching_pairs.append((neg_indices_a[i], neg_indices_b[j]))
+    
+    # If there are unmatched centers (due to different counts of positive/negative centers),
+    # the bottleneck distance should reflect that, but we don't include them in matching_pairs
+    
+    return bottleneck_dist, matching_pairs

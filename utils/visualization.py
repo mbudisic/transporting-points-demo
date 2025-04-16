@@ -2,6 +2,180 @@ import numpy as np
 import plotly.graph_objects as go
 from utils.distribution_utils import Distribution, create_gaussian_mixture
 
+def create_bottleneck_transport_plot(distribution_a, distribution_b, matching_pairs):
+    """
+    Create a plot showing the bottleneck transportation plan between two distributions.
+    
+    Args:
+        distribution_a: Distribution object for the first distribution
+        distribution_b: Distribution object for the second distribution
+        matching_pairs: List of tuples (idx_a, idx_b) indicating matched blob indices
+        
+    Returns:
+        Plotly figure object
+    """
+    fig = go.Figure()
+    
+    # Plot background grid
+    fig.add_trace(go.Scatter(
+        x=[0, 10, 10, 0, 0],
+        y=[0, 0, 10, 10, 0],
+        mode='lines',
+        line=dict(color='black', width=1),
+        showlegend=False
+    ))
+    
+    # Plot distribution A blobs
+    for i, blob in enumerate(distribution_a.blobs):
+        # Add center point
+        marker_size = 10 + abs(blob['height']) * 2
+        marker_color = 'darkred' if blob['sign'] > 0 else 'orangered'
+        marker_symbol = 'circle' if blob['sign'] > 0 else 'circle-open'
+        
+        fig.add_trace(go.Scatter(
+            x=[blob['x']],
+            y=[blob['y']],
+            mode='markers',
+            marker=dict(
+                symbol=marker_symbol,
+                size=marker_size,
+                color=marker_color,
+                line=dict(width=1, color='darkred')
+            ),
+            name=f'A{blob["id"]}',
+            hoverinfo='text',
+            hovertext=f'ID: A{blob["id"]}<br>Position: ({blob["x"]:.2f}, {blob["y"]:.2f})<br>Height: {blob["height"]:.2f}<br>Sign: {blob["sign"]}'
+        ))
+        
+        # Add variance circle
+        theta = np.linspace(0, 2*np.pi, 30)
+        radius = np.sqrt(blob['variance'] * 2)
+        x_circle = blob['x'] + radius * np.cos(theta)
+        y_circle = blob['y'] + radius * np.sin(theta)
+        
+        fig.add_trace(go.Scatter(
+            x=x_circle,
+            y=y_circle,
+            mode='lines',
+            line=dict(color='red', width=1, dash='dot'),
+            showlegend=False,
+            hoverinfo='none'
+        ))
+        
+        # Add sign indicator in the center of the blob
+        sign_symbol = '+' if blob['sign'] > 0 else '-'
+        fig.add_trace(go.Scatter(
+            x=[blob['x']],
+            y=[blob['y']],
+            mode='text',
+            text=sign_symbol,
+            textfont=dict(
+                size=16,
+                color='white' if blob['sign'] > 0 else 'black'
+            ),
+            showlegend=False,
+            hoverinfo='none'
+        ))
+    
+    # Plot distribution B blobs
+    for i, blob in enumerate(distribution_b.blobs):
+        # Add center point
+        marker_size = 10 + abs(blob['height']) * 2
+        marker_color = 'darkblue' if blob['sign'] > 0 else 'mediumpurple'
+        marker_symbol = 'circle' if blob['sign'] > 0 else 'circle-open'
+        
+        fig.add_trace(go.Scatter(
+            x=[blob['x']],
+            y=[blob['y']],
+            mode='markers',
+            marker=dict(
+                symbol=marker_symbol,
+                size=marker_size,
+                color=marker_color,
+                line=dict(width=1, color='darkblue')
+            ),
+            name=f'B{blob["id"]}',
+            hoverinfo='text',
+            hovertext=f'ID: B{blob["id"]}<br>Position: ({blob["x"]:.2f}, {blob["y"]:.2f})<br>Height: {blob["height"]:.2f}<br>Sign: {blob["sign"]}'
+        ))
+        
+        # Add variance circle
+        theta = np.linspace(0, 2*np.pi, 30)
+        radius = np.sqrt(blob['variance'] * 2)
+        x_circle = blob['x'] + radius * np.cos(theta)
+        y_circle = blob['y'] + radius * np.sin(theta)
+        
+        fig.add_trace(go.Scatter(
+            x=x_circle,
+            y=y_circle,
+            mode='lines',
+            line=dict(color='blue', width=1, dash='dot'),
+            showlegend=False,
+            hoverinfo='none'
+        ))
+        
+        # Add sign indicator in the center of the blob
+        sign_symbol = '+' if blob['sign'] > 0 else '-'
+        fig.add_trace(go.Scatter(
+            x=[blob['x']],
+            y=[blob['y']],
+            mode='text',
+            text=sign_symbol,
+            textfont=dict(
+                size=16,
+                color='white' if blob['sign'] > 0 else 'black'
+            ),
+            showlegend=False,
+            hoverinfo='none'
+        ))
+    
+    # Plot the bottleneck matching lines
+    for idx_a, idx_b in matching_pairs:
+        blob_a = distribution_a.blobs[idx_a]
+        blob_b = distribution_b.blobs[idx_b]
+        
+        # Determine line color based on sign
+        line_color = 'green' if blob_a['sign'] > 0 else 'orange'
+        
+        # Draw a line connecting the matched blobs
+        fig.add_trace(go.Scatter(
+            x=[blob_a['x'], blob_b['x']],
+            y=[blob_a['y'], blob_b['y']],
+            mode='lines',
+            line=dict(color=line_color, width=2),
+            showlegend=False,
+            hoverinfo='text',
+            hovertext=f'Match: A{blob_a["id"]} ↔ B{blob_b["id"]}<br>Distance: {((blob_a["x"]-blob_b["x"])**2 + (blob_a["y"]-blob_b["y"])**2)**0.5:.2f}'
+        ))
+    
+    # Configure layout
+    fig.update_layout(
+        title="Bottleneck Distance Transportation Plan",
+        xaxis_title="X",
+        yaxis_title="Y",
+        autosize=True,
+        margin=dict(l=50, r=50, b=50, t=70),
+        plot_bgcolor="white",
+        xaxis=dict(range=[0, 10], constrain="domain"),
+        yaxis=dict(range=[0, 10], scaleanchor="x", scaleratio=1),
+        hovermode='closest',
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        )
+    )
+    
+    # Make the plot responsive
+    fig.update_layout(
+        autosize=True,
+        height=600,
+    )
+    
+    return fig
+
 def create_distribution_plot(distribution_a, distribution_b, grid_size=100):
     """
     Create a plot of two distributions on a 2D plane.

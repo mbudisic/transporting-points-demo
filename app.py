@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from utils.distribution_utils import create_gaussian_mixture, Distribution
 from utils.distance_calculator import calculate_wasserstein_continuous, calculate_wasserstein_discrete, calculate_bottleneck
-from utils.visualization import create_distribution_plot, create_interactive_plot
+from utils.visualization import create_distribution_plot, create_interactive_plot, create_bottleneck_transport_plot
 import base64
 import io
 
@@ -62,12 +62,71 @@ def update_blob(distribution, index, x=None, y=None, variance=None, height=None,
         st.session_state.distribution_b.update_blob(index, x, y, variance, height, sign)
 
 def handle_plot_click(trace, points, state):
-    # This function will be called when a user clicks on the plot
+    """Handle click events on the plot"""
     if len(points.point_inds) == 0:
         return
     
+    # Check if we clicked on a center or variance circle by examining customdata
+    if points.point_inds and hasattr(points, 'customdata') and len(points.customdata) > 0:
+        customdata = points.customdata[0]
+        
+        # If we have customdata, check what type of element was clicked
+        if isinstance(customdata, dict) and 'type' in customdata:
+            if customdata['type'] == 'center' or customdata['type'] == 'variance':
+                # Don't add a new blob if we clicked on an existing blob or variance circle
+                return
+    
+    # If we didn't click on an existing element, add a new blob
     x, y = points.xs[0], points.ys[0]
     add_blob(st.session_state.active_distribution, x, y)
+
+def handle_drag_event(trace, points, state):
+    """Handle drag events to move blob centers or adjust variance circles"""
+    if not points.point_inds or not hasattr(points, 'customdata') or len(points.customdata) == 0:
+        return
+    
+    # Get the customdata from the first point
+    customdata = points.customdata[0]
+    
+    # Ensure customdata is a dict with the expected fields
+    if not isinstance(customdata, dict) or 'type' not in customdata or 'dist' not in customdata or 'id' not in customdata:
+        return
+    
+    drag_type = customdata['type']
+    dist_name = customdata['dist']
+    blob_id = customdata['id']
+    
+    # Get the new coordinates
+    new_x, new_y = points.xs[0], points.ys[0]
+    
+    # Ensure coordinates stay within the plot bounds
+    new_x = max(0, min(10, new_x))
+    new_y = max(0, min(10, new_y))
+    
+    # Handle different types of drag events
+    if drag_type == 'center':
+        # Update the position of the blob center
+        update_blob(dist_name, blob_id, x=new_x, y=new_y)
+        st.rerun()
+    
+    elif drag_type == 'variance':
+        # Find the blob being updated
+        distribution = st.session_state.distribution_a if dist_name == 'A' else st.session_state.distribution_b
+        
+        # Find the blob with the matching ID
+        for blob in distribution.blobs:
+            if blob['id'] == blob_id:
+                # Calculate the new variance based on distance from center
+                center_x, center_y = blob['x'], blob['y']
+                distance = ((new_x - center_x)**2 + (new_y - center_y)**2)**0.5
+                
+                # Set a minimum variance to prevent issues
+                new_variance = max(0.1, distance**2 / 2)
+                
+                # Update the variance
+                update_blob(dist_name, blob_id, variance=new_variance)
+                st.rerun()
+                break
 
 def export_to_csv():
     output = io.StringIO()
@@ -252,8 +311,16 @@ with center_col:
         show_both=st.session_state.show_both
     )
     
-    # Add click callback
-    st.plotly_chart(fig, use_container_width=True, on_click=handle_plot_click)
+    # Set the dragmode to 'dragging'
+    fig.update_layout(dragmode='dragging')
+    
+    # Add event callbacks
+    st.plotly_chart(
+        fig, 
+        use_container_width=True, 
+        on_click=handle_plot_click,
+        on_dragend=handle_drag_event  # Add drag event handler
+    )
     
     # Calculate and display distances
     has_a = len(st.session_state.distribution_a.blobs) > 0
@@ -279,7 +346,13 @@ with center_col:
         # Calculate distances
         wasserstein_continuous = calculate_wasserstein_continuous(dist_a_continuous, dist_b_continuous, points)
         wasserstein_discrete = calculate_wasserstein_discrete(centers_a, centers_b, weights_a, weights_b)
-        bottleneck = calculate_bottleneck(centers_a, centers_b, weights_a, weights_b)
+        bottleneck_value, matching_pairs = calculate_bottleneck(centers_a, centers_b, weights_a, weights_b)
+        
+        # Store the bottleneck matching in session state for visualization
+        if 'bottleneck_matching' not in st.session_state:
+            st.session_state.bottleneck_matching = matching_pairs
+        else:
+            st.session_state.bottleneck_matching = matching_pairs
         
         # Display metrics in a box
         st.markdown("### Distribution Distances")
@@ -294,8 +367,18 @@ with center_col:
             st.info("Measures minimum 'cost' of transforming centers of one distribution into another.")
             
         with metrics_col3:
-            st.metric("Bottleneck Distance", f"{bottleneck:.4f}")
+            st.metric("Bottleneck Distance", f"{bottleneck_value:.4f}")
             st.info("Largest minimum distance to transform one distribution into another.")
+            
+            # Add Show Bottleneck Transport button
+            if st.button("Show Bottleneck Transport Plan"):
+                # Create a visualization of the bottleneck transport plan
+                transport_fig = create_bottleneck_transport_plot(
+                    st.session_state.distribution_a,
+                    st.session_state.distribution_b,
+                    st.session_state.bottleneck_matching
+                )
+                st.plotly_chart(transport_fig, use_container_width=True)
     else:
         st.warning("Add blobs to both distributions to calculate distances.")
 
