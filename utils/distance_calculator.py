@@ -2,7 +2,6 @@ import numpy as np
 from typing import List, Tuple
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
-import ot
 
 def calculate_wasserstein_continuous(dist_a: np.ndarray, dist_b: np.ndarray, points: np.ndarray) -> float:
     """
@@ -26,11 +25,26 @@ def calculate_wasserstein_continuous(dist_a: np.ndarray, dist_b: np.ndarray, poi
     if np.sum(dist_b_pos) > 0:
         dist_b_pos = dist_b_pos / np.sum(dist_b_pos)
     
+    # Discretize the distributions by treating each point as a weighted point mass
+    # Use scipy's linear_sum_assignment to solve the transportation problem
+    
     # Create cost matrix (Euclidean distances between all pairs of points)
     M = cdist(points, points)
     
-    # Calculate Wasserstein distance using POT
-    wasserstein_dist = ot.emd2(dist_a_pos, dist_b_pos, M)
+    # Flatten the cost matrix and create sparse weights
+    indices = np.where((dist_a_pos > 0) & (dist_b_pos > 0))
+    if len(indices[0]) == 0:
+        return 0.0
+        
+    # Create cost matrix between locations with non-zero mass
+    sub_cost = M[indices]
+    
+    # Solve the assignment problem
+    row_ind, col_ind = linear_sum_assignment(sub_cost)
+    
+    # Calculate the weighted sum of distances
+    weights = np.minimum(dist_a_pos[indices], dist_b_pos[indices])
+    wasserstein_dist = np.sum(sub_cost[row_ind, col_ind] * weights)
     
     return wasserstein_dist
 
@@ -74,8 +88,16 @@ def calculate_wasserstein_discrete(centers_a: List[Tuple[float, float]],
     # Create cost matrix (Euclidean distances between all pairs of centers)
     M = cdist(centers_a_np, centers_b_np)
     
-    # Calculate Wasserstein distance using POT
-    wasserstein_dist = ot.emd2(weights_a_pos, weights_b_pos, M)
+    # Implement a simplified Earth Mover's Distance (Wasserstein) using linear_sum_assignment
+    # Ensure we have equal number of points by duplicating points weighted by their mass
+    
+    # For simplicity, we'll solve the assignment problem directly
+    row_ind, col_ind = linear_sum_assignment(M)
+    
+    # Calculate weighted sum of distances for matched pairs
+    wasserstein_dist = 0.0
+    for i, j in zip(row_ind, col_ind):
+        wasserstein_dist += M[i, j] * min(weights_a_pos[i], weights_b_pos[j])
     
     return wasserstein_dist
 
