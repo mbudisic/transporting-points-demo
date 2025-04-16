@@ -2,7 +2,8 @@
 
 An interactive educational visualization platform for exploring distance metrics between mathematical distributions through dynamic, engaging 2D probability simulations.
 
-![Application Screenshot](assets/app_screenshot.svg)
+**Application Visualization:**
+The application displays two interactive distributions (A and B) where users can add blobs, adjust their properties, and visualize different distance metrics including spatial bottleneck distance, spatial Wasserstein distance, height-based bottleneck distance, and height-based Wasserstein distance. Transport plans between distributions are visualized with connecting lines.
 
 ## Overview
 
