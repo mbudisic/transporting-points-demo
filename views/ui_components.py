@@ -520,6 +520,24 @@ class UIComponents:
             # Visualization mode selection
             mode = AppState.get_visualization_mode()
             
+            # Add contour plot visibility controls
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.checkbox("Show Teal Distribution Contour", value=AppState.is_showing_contour_a(), key="show_contour_a"):
+                    if not AppState.is_showing_contour_a():
+                        AppState.toggle_contour_a()
+                else:
+                    if AppState.is_showing_contour_a():
+                        AppState.toggle_contour_a()
+                        
+            with col2:
+                if st.checkbox("Show Orange Distribution Contour", value=AppState.is_showing_contour_b(), key="show_contour_b"):
+                    if not AppState.is_showing_contour_b():
+                        AppState.toggle_contour_b()
+                else:
+                    if AppState.is_showing_contour_b():
+                        AppState.toggle_contour_b()
+            
             # Create the appropriate visualization
             if show_a or show_b:
                 # Create the standard visualization
@@ -527,6 +545,8 @@ class UIComponents:
                     dist_a=distribution_a if show_a else None,
                     dist_b=distribution_b if show_b else None,
                     show_both=AppState.is_showing_both(),
+                    show_contour_a=AppState.is_showing_contour_a(),
+                    show_contour_b=AppState.is_showing_contour_b(),
                 )
                 
                 # Get matching information

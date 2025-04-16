@@ -9,7 +9,7 @@ class VisualizationService:
     """
     
     @staticmethod
-    def create_standard_visualization(dist_a=None, dist_b=None, show_both=True):
+    def create_standard_visualization(dist_a=None, dist_b=None, show_both=True, show_contour_a=False, show_contour_b=False):
         """
         Create a standard visualization of the distributions.
         
@@ -17,6 +17,8 @@ class VisualizationService:
             dist_a: Distribution A (optional)
             dist_b: Distribution B (optional)
             show_both: Whether to show both distributions
+            show_contour_a: Whether to show contour plot for Distribution A
+            show_contour_b: Whether to show contour plot for Distribution B
             
         Returns:
             Plotly figure
@@ -31,7 +33,9 @@ class VisualizationService:
             distribution_a=dist_a if dist_a is not None else Distribution(),
             distribution_b=dist_b if dist_b is not None else Distribution(),
             active_distribution=active_distribution,
-            show_both=show_both
+            show_both=show_both,
+            show_contour_a=show_contour_a,
+            show_contour_b=show_contour_b
         )
         
     @staticmethod
@@ -264,7 +268,9 @@ class VisualizationService:
         show_height_bottleneck_lines: bool = False,
         height_bottleneck_pairs: Optional[List[Tuple[int, int]]] = None,
         show_height_wasserstein_lines: bool = False,
-        height_wasserstein_pairs: Optional[List[Tuple[int, int, float]]] = None
+        height_wasserstein_pairs: Optional[List[Tuple[int, int, float]]] = None,
+        show_contour_a: bool = False,
+        show_contour_b: bool = False
     ):
         """
         Create an interactive plot that allows users to manipulate the distributions.
@@ -282,6 +288,8 @@ class VisualizationService:
             height_bottleneck_pairs: List of tuples (idx_a, idx_b) indicating matched blob indices for height-based bottleneck
             show_height_wasserstein_lines: Whether to show the height-based Wasserstein transport lines
             height_wasserstein_pairs: List of tuples (idx_a, idx_b, weight) indicating matched blob indices for height-based Wasserstein
+            show_contour_a: Whether to show contour plot for Distribution A
+            show_contour_b: Whether to show contour plot for Distribution B
             
         Returns:
             Plotly figure object
@@ -306,7 +314,23 @@ class VisualizationService:
             
             # Show distribution A if it's active or if showing both
             if active_distribution == 'A' or show_both:
-                # We've removed the contour plots in favor of just the variance circles
+                # Add contour plot for distribution A if requested
+                if show_contour_a:
+                    fig.add_trace(go.Contour(
+                        z=dist_a_grid,
+                        x=x_grid,
+                        y=y_grid,
+                        colorscale='Teal',
+                        opacity=0.3,
+                        showscale=False,
+                        contours=dict(
+                            coloring='fill',
+                            showlabels=False,
+                        ),
+                        line=dict(width=0),
+                        name='Distribution A Contour',
+                        hoverinfo='skip'
+                    ))
                 
                 # Add markers for blob centers in distribution A
                 for blob in distribution_a.blobs:
@@ -394,7 +418,23 @@ class VisualizationService:
             
             # Show distribution B if it's active or if showing both
             if active_distribution == 'B' or show_both:
-                # We've removed the contour plots in favor of just the variance circles
+                # Add contour plot for distribution B if requested
+                if show_contour_b:
+                    fig.add_trace(go.Contour(
+                        z=dist_b_grid,
+                        x=x_grid,
+                        y=y_grid,
+                        colorscale='Oranges',
+                        opacity=0.3,
+                        showscale=False,
+                        contours=dict(
+                            coloring='fill',
+                            showlabels=False,
+                        ),
+                        line=dict(width=0),
+                        name='Distribution B Contour',
+                        hoverinfo='skip'
+                    ))
                 
                 # Add markers for blob centers in distribution B
                 for blob in distribution_b.blobs:
