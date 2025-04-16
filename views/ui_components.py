@@ -841,46 +841,16 @@ class UIComponents:
             
             # Display only the selected metric
             if current_plan != "hide":
-                st.markdown("### Selected Distance Metric")
+                st.subheader("Selected Distance Metric")
                 
                 if current_plan == "bottleneck_spatial":
-                    st.metric("Spatial Bottleneck Distance", f"{bottleneck_value:.4f}")
-                    st.info("Largest minimum distance between points when transforming one distribution into another.")
-                    
+                    st.metric("Spatial Bottleneck Distance", f"{bottleneck_value:.4f}")                   
                 elif current_plan == "wasserstein_spatial":
-                    st.metric("Spatial Wasserstein Distance", f"{wasserstein_discrete:.4f}")
-                    st.info("Minimum 'cost' of transforming centers of one distribution into another, based on spatial positions.")
-                    
+                    st.metric("Spatial Wasserstein Distance", f"{wasserstein_discrete:.4f}")                   
                 elif current_plan == "bottleneck_height":
                     st.metric("Height-Based Bottleneck Distance", f"{bottleneck_heights:.4f}")
-                    st.info("Maximum difference between sorted heights, ignoring spatial positions.")
-                    
                 elif current_plan == "wasserstein_height":
                     st.metric("Height-Based Wasserstein Distance", f"{wasserstein_heights:.4f}")
-                    st.info("Minimum 'cost' of transforming heights, ignoring spatial positions.")
-            
-            # Additional metrics with collapsible sections
-            with st.expander("Show All Distance Metrics"):
-                # Display all metrics in a single table format
-                st.markdown("#### Spatial Distribution Distances")
-                metrics_data = [
-                    ["Wasserstein (Continuous)", f"{wasserstein_continuous:.4f}"],
-                    ["Wasserstein (Centers)", f"{wasserstein_discrete:.4f}"],
-                    ["Bottleneck Distance", f"{bottleneck_value:.4f}"]
-                ]
-                # Create a DataFrame for display
-                metrics_df = pd.DataFrame(metrics_data, columns=["Metric", "Value"])
-                st.table(metrics_df)
-                
-                # Display height-based metrics
-                st.markdown("#### Height-Based Distances")
-                height_metrics_data = [
-                    ["Wasserstein (Heights)", f"{wasserstein_heights:.4f}"],
-                    ["Bottleneck (Heights)", f"{bottleneck_heights:.4f}"]
-                ]
-                # Create a DataFrame for display
-                height_metrics_df = pd.DataFrame(height_metrics_data, columns=["Metric", "Value"])
-                st.table(height_metrics_df)
         else:
             st.warning("Add blobs to both distributions to calculate distances.")
     
