@@ -13,35 +13,45 @@ The application follows an MVC (Model-View-Controller) architecture:
   - `views/visualization.py`: Contains visualization services for rendering distributions and transport plans
   - `views/ui_components.py`: Defines UI components like sliders, buttons, and tabs
 - **Controllers** (`controllers/`): Implement business logic and calculations
-  - `controllers/distance_calculator.py`: Contains all distance metric implementations
+  - `controllers/pot_distance_calculator.py`: Contains all distance metric implementations using POT
   - `controllers/app_state.py`: Manages application state across the Streamlit app
   - `controllers/distribution_controller.py`: Handles distribution operations and export functionality
 - **Utilities** (`utils/`): Provide helper functions
-  - `utils/export_utils.py`: Contains the focused export functionality (lines 12-489)
+  - `utils/export_utils.py`: Contains the focused export functionality for reporting results
 
-Mathematical operations are primarily located in the `controllers/distance_calculator.py` file (lines 1-586), which contains the `DistanceCalculator` class with the following key methods:
+Mathematical operations are primarily located in the `controllers/pot_distance_calculator.py` file, which contains the `POTDistanceCalculator` class with the following key methods:
 
-- Lines 13-17: `_euclidean_distance()` - Utility function for distance calculations
-- Lines 20-31: `_create_distance_matrix()` - Creates cost matrices for transportation problems
-- Lines 34-36: `_solve_assignment_problem()` - Wrapper for the Hungarian algorithm
-- Lines 306-392: `calculate_wasserstein_plan()` - Implementation of Wasserstein distance and transport plan
-- Lines 452-503: `calculate_bottleneck()` - Implementation of bottleneck distance calculation
-- Lines 173-261: `calculate_height_wasserstein_plan()` - Height-based Wasserstein implementation
-- Lines 118-172: `calculate_height_bottleneck_plan()` - Height-based bottleneck implementation
-- Lines 507-586: Helper methods for mathematical validation and explanation
+- `calculate_wasserstein_continuous()`: Calculates Wasserstein distance using POT's continuous formulation
+- `_create_cost_matrix_spatial()`: Creates distance matrices for spatial metrics using POT's distance functions
+- `_create_cost_matrix_heights()`: Creates distance matrices for height-based metrics
+- `calculate_wasserstein_plan()`: Implementation of Wasserstein distance using POT's Earth Mover's Distance (EMD)
+- `calculate_bottleneck()`: Implementation of bottleneck distance using POT for distance matrices and custom worst-cost matching
+- `calculate_height_wasserstein_plan()`: Height-based Wasserstein implementation using POT's EMD
+- `calculate_height_bottleneck_plan()`: Height-based bottleneck implementation using POT and custom worst-cost matching
+- Helper methods for mathematical validation and explanation
+
+## Python Optimal Transport (POT) Package
+
+The application uses the [Python Optimal Transport (POT)](https://pythonot.github.io/) package for computing distance matrices and solving optimal transport problems. Key functions include:
+
+1. **`ot.dist()`**: Computes the distance matrix between two sets of points
+2. **`ot.emd()`**: Solves the Earth Mover's Distance (EMD) problem exactly
+3. **`ot.emd2()`**: Computes the Earth Mover's Distance value only
+
+For bottleneck distances, the application uses a combination of POT for distance computation and a custom worst-cost matching algorithm based on the Hungarian algorithm (via `scipy.optimize.linear_sum_assignment`).
 
 ## Adding a New Distance Metric
 
 ### Step 1: Implement the Distance Calculation
 
-1. Open `controllers/distance_calculator.py`
-2. Add a new method to the `DistanceCalculator` class:
+1. Open `controllers/pot_distance_calculator.py`
+2. Add a new method to the `POTDistanceCalculator` class that leverages the POT package:
 
 ```python
 @staticmethod
 def calculate_new_distance(dist_a: Distribution, dist_b: Distribution) -> Tuple[float, List[Tuple[int, int, float]]]:
     """
-    Calculate your new distance between two distributions.
+    Calculate your new distance between two distributions using POT package functions.
     
     Args:
         dist_a: First distribution
@@ -51,8 +61,37 @@ def calculate_new_distance(dist_a: Distribution, dist_b: Distribution) -> Tuple[
         A tuple containing (distance_value, matching_pairs)
         where matching_pairs is a list of tuples (idx_a, idx_b, weight) for the transportation plan
     """
-    # Your implementation here
-    # ...
+    # Handle empty distributions
+    if not dist_a.blobs or not dist_b.blobs:
+        return 0.0, []
+        
+    # Extract positions and weights from distributions
+    positions_a = np.array([blob.center for blob in dist_a.blobs])
+    weights_a = np.array([blob.height for blob in dist_a.blobs])
+    
+    positions_b = np.array([blob.center for blob in dist_b.blobs])
+    weights_b = np.array([blob.height for blob in dist_b.blobs])
+    
+    # Example: Use POT distance function to create cost matrix
+    cost_matrix = ot.dist(positions_a, positions_b)
+    
+    # Example: Use POT solvers for the transportation problem
+    # Assuming all weights are positive for this example
+    weights_a_norm = np.abs(weights_a) / np.sum(np.abs(weights_a))
+    weights_b_norm = np.abs(weights_b) / np.sum(np.abs(weights_b))
+    
+    # Calculate transport plan using EMD
+    transport_plan = ot.emd(weights_a_norm, weights_b_norm, cost_matrix)
+    
+    # Calculate distance value
+    distance_value = np.sum(transport_plan * cost_matrix)
+    
+    # Convert to matching pairs format
+    matching_pairs = []
+    for i in range(len(dist_a.blobs)):
+        for j in range(len(dist_b.blobs)):
+            if transport_plan[i, j] > 1e-10:  # Threshold for numerical stability
+                matching_pairs.append((i, j, float(transport_plan[i, j])))
     
     return distance_value, matching_pairs
 ```
@@ -162,6 +201,7 @@ Here's a complete example of adding a normalized Wasserstein distance that scale
 def calculate_normalized_wasserstein(dist_a: Distribution, dist_b: Distribution) -> Tuple[float, List[Tuple[int, int, float]]]:
     """
     Calculate Wasserstein distance normalized by the total distribution weight.
+    Uses POT package for transportation plans.
     
     Args:
         dist_a: First distribution
@@ -170,8 +210,8 @@ def calculate_normalized_wasserstein(dist_a: Distribution, dist_b: Distribution)
     Returns:
         A tuple containing (normalized_distance, matching_pairs)
     """
-    # First calculate regular Wasserstein distance and plan
-    wasserstein_val, matching_pairs = DistanceCalculator.calculate_wasserstein_plan(dist_a, dist_b)
+    # First calculate regular Wasserstein distance and plan using POT
+    wasserstein_val, matching_pairs = POTDistanceCalculator.calculate_wasserstein_plan(dist_a, dist_b)
     
     # Calculate total weights
     total_weight_a = sum(abs(b.height) for b in dist_a.blobs)
@@ -253,9 +293,9 @@ The export functionality is designed to focus only on the currently selected tra
 
 ```python
 elif selected_transport == "your_new_distance":
-    distance_value, matching_pairs = DistanceCalculator.calculate_your_new_distance(dist_a, dist_b)
-    plan_explanation = DistanceCalculator.explain_matching(dist_a, dist_b, matching_pairs)
-    distance_matrix, idx_a, idx_b = DistanceCalculator.get_distance_matrix(dist_a, dist_b, 'spatial')
+    distance_value, matching_pairs = POTDistanceCalculator.calculate_your_new_distance(dist_a, dist_b)
+    plan_explanation = POTDistanceCalculator.explain_matching(dist_a, dist_b, matching_pairs)
+    distance_matrix, idx_a, idx_b = POTDistanceCalculator.get_distance_matrix(dist_a, dist_b, 'spatial')
     metric_name = "Your New Distance"
 ```
 
@@ -283,6 +323,12 @@ elif AppState.is_showing_your_new_distance():
 
 ## Additional Resources
 
-- [Optimal Transport Theory](https://optimaltransport.github.io/)
-- [SciPy Documentation](https://docs.scipy.org/doc/scipy/reference/optimize.html) for optimization functions
-- [NetworkX Documentation](https://networkx.org/documentation/stable/) for graph algorithms
+- [Python Optimal Transport (POT) Documentation](https://pythonot.github.io/): The official documentation for the POT package
+  - [POT API Reference](https://pythonot.github.io/gen_modules/ot.html): Detailed API documentation for all POT functions
+  - [POT Tutorials](https://pythonot.github.io/auto_examples/index.html): Tutorials and examples using the POT package
+  - [POT Distance Functions](https://pythonot.github.io/gen_modules/ot.dist.html): Documentation for distance matrix computation
+  - [POT EMD Solver](https://pythonot.github.io/gen_modules/ot.emd.html): Documentation for the Earth Mover's Distance solver
+
+- [Optimal Transport Theory](https://optimaltransport.github.io/): General resources on optimal transport theory
+- [SciPy Documentation](https://docs.scipy.org/doc/scipy/reference/optimize.html): Documentation for optimization functions (used for the Hungarian algorithm)
+- [NetworkX Documentation](https://networkx.org/documentation/stable/): Documentation for graph algorithms (useful for custom implementations)

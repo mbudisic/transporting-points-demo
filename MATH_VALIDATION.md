@@ -7,7 +7,7 @@ This guide explains how to verify the mathematical calculations used in the Dist
 The application implements several distance metrics between probability distributions:
 
 1. **Spatial Bottleneck Distance**: Measures the maximum minimum distance between paired points
-2. **Spatial Wasserstein Distance**: Measures the overall transportation cost between distributions
+2. **Spatial Wasserstein Distance**: Measures the overall transportation cost between distributions (Earth Mover's Distance)
 3. **Height-Based Bottleneck Distance**: Similar to spatial bottleneck, but based on blob heights
 4. **Height-Based Wasserstein Distance**: Similar to spatial Wasserstein, but based on blob heights
 
@@ -17,30 +17,38 @@ The application implements several distance metrics between probability distribu
 
 - Basic familiarity with optimal transport theory
 - Understanding of distance metrics between distributions
-- Knowledge of linear programming (for Wasserstein distance)
+- Knowledge of the Earth Mover's Distance (EMD) algorithm
+- Knowledge of the Hungarian algorithm for assignment problems
 - Knowledge of bottleneck matching (for bottleneck distance)
 
 ### Step 1: Accessing the Raw Distance Calculation Code
 
-The core calculation code is located in `controllers/distance_calculator.py`. This file contains the implementation of:
+The core calculation code is located in `controllers/pot_distance_calculator.py`. This file contains the implementation of:
 
-- `calculate_wasserstein_plan()` (lines 306-392): Computes the Wasserstein distance and transportation plan
-  - The key algorithm implementation is at lines 356-368 (positive blobs) and lines 381-392 (negative blobs)
-  - Uses the Hungarian algorithm via `_solve_assignment_problem()` at line 34
+- `calculate_wasserstein_plan()`: Computes the Wasserstein distance (Earth Mover's Distance) and transportation plan
+  - Uses the Python Optimal Transport (POT) package's `ot.emd()` function to compute exact EMD solutions
+  - Handles positive and negative heights separately to maintain sign preservation
+  - Normalizes distributions to create proper probability distributions for POT algorithms
   
-- `calculate_bottleneck()` (lines 452-503): Computes the bottleneck distance and matching
-  - Similar to Wasserstein but instead of summing, it finds the maximum distance at lines 501-502
+- `calculate_bottleneck()`: Computes the bottleneck distance and matching
+  - Uses POT to compute distance matrices but implements a custom worst-cost matching algorithm
+  - Leverages `scipy.optimize.linear_sum_assignment` (Hungarian algorithm) to find optimal assignments
+  - Computes the maximum distance (bottleneck) from the optimal assignment
   
-- `calculate_height_wasserstein_plan()` (lines 173-261): Computes the height-based Wasserstein distance
-  - The matching algorithm is implemented in lines 210-261 with separate logic for positive heights (213-266) and negative heights (268-291)
+- `calculate_height_wasserstein_plan()`: Computes the height-based Wasserstein distance
+  - Similar to spatial Wasserstein but uses a height-difference cost matrix
+  - Uses `ot.emd()` for exact Earth Mover's Distance calculation
   
-- `calculate_height_bottleneck_plan()` (lines 118-172): Computes the height-based bottleneck distance
-  - The matching algorithm is implemented in lines 155-203 with the max difference calculated in lines 160 and 200
+- `calculate_height_bottleneck_plan()`: Computes the height-based bottleneck distance
+  - Similar to spatial bottleneck but uses a height-difference cost matrix
+  - Uses a combination of POT distance computation and custom worst-cost matching
 
 Additionally, the following helper methods are useful for validation:
 
-- `get_distance_matrix()` (lines 507-543): Generates the raw distance matrices used in calculations
-- `explain_matching()` (lines 545-586): Creates human-readable explanations of matchings
+- `_create_cost_matrix_spatial()`: Creates distance matrices for spatial metrics using `ot.dist()`
+- `_create_cost_matrix_heights()`: Creates distance matrices for height-based metrics
+- `get_distance_matrix()`: Generates the raw distance matrices used in calculations
+- `explain_matching()`: Creates human-readable explanations of matchings
 
 ### Step 2: Manual Calculation for Simple Examples
 
@@ -148,6 +156,25 @@ The export functionality is implemented in `utils/export_utils.py` (lines 12-489
 - `generate_html_report()` (lines 123-385): Generates an HTML report with visualizations and tables
 - `export_to_formats()` (lines 429-489): Creates downloadable files in multiple formats
 
+## Python Optimal Transport (POT) Package
+
+The application uses the [Python Optimal Transport (POT)](https://pythonot.github.io/) package for computing distance matrices and solving optimal transport problems. Key functions used include:
+
+1. **`ot.dist()`**: Computes the distance matrix between two sets of points
+   - Documentation: [POT Distance Functions](https://pythonot.github.io/gen_modules/ot.dist.html)
+   - Used to compute Euclidean distances between blob centers in `_create_cost_matrix_spatial()`
+
+2. **`ot.emd()`**: Solves the Earth Mover's Distance (EMD) problem exactly
+   - Documentation: [POT EMD Solver](https://pythonot.github.io/gen_modules/ot.emd.html)
+   - Used to compute transportation plans in all Wasserstein calculations
+   - Provides more stability than entropy-regularized methods like Sinkhorn
+
+3. **`ot.emd2()`**: Computes the Earth Mover's Distance value only
+   - Documentation: [POT EMD2 Function](https://pythonot.github.io/gen_modules/ot.emd2.html)
+   - Used in the `calculate_wasserstein_continuous()` method
+
+For bottleneck distances, the application uses a combination of POT for distance computation and a custom worst-cost matching algorithm based on the Hungarian algorithm (via `scipy.optimize.linear_sum_assignment`).
+
 ## Getting Support
 
 If you find discrepancies between your calculations and the application:
@@ -155,4 +182,5 @@ If you find discrepancies between your calculations and the application:
 1. Check the "Distance Matrices" tab to see the raw distance values used
 2. Verify that you're using the same mathematical formulation 
 3. Examine the exported documents for more detailed information
-4. If issues persist, check the calculation methods in `controllers/distance_calculator.py`
+4. If issues persist, check the calculation methods in `controllers/pot_distance_calculator.py`
+5. Refer to the [POT documentation](https://pythonot.github.io/) for details on the underlying algorithms
