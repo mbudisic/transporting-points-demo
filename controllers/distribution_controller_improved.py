@@ -208,6 +208,28 @@ class DistributionController:
             return False
     
     @staticmethod
+    def export_as_document(dist_a: Distribution, 
+                           dist_b: Distribution,
+                           fig: Optional[Any] = None) -> Dict[str, str]:
+        """
+        Export distributions, metrics, and visualizations to a static document.
+        
+        Args:
+            dist_a: Distribution A
+            dist_b: Distribution B
+            fig: Optional plotly figure to include in export
+            
+        Returns:
+            Dictionary of HTML strings with download links for different formats
+        """
+        # Store the figure in session state if provided
+        if fig is not None:
+            st.session_state.current_figure = fig
+        
+        # Create download links for all supported formats directly
+        return export_to_formats(dist_a, dist_b, fig)
+        
+    @staticmethod
     def generate_export_report(dist_a: Distribution, 
                               dist_b: Distribution, 
                               visualization_service: Any,
