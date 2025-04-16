@@ -270,7 +270,10 @@ with left_col:
         
         # Add a selectbox to choose which blob to edit
         st.markdown("#### Select Blob to Manipulate")
-        blob_options = [f"Blob A{row['id']}" for _, row in df_a.iterrows()]
+        
+        # Create a mapping of blob IDs to display names
+        blob_id_map = {f"Blob A{int(row['id'])}": int(row['id']) for _, row in df_a.iterrows()}
+        blob_options = list(blob_id_map.keys())
         
         if blob_options:
             # Find current selection index if there is one
@@ -289,9 +292,9 @@ with left_col:
                 key="blob_selector_a"
             )
             
-            # Extract the ID from the selection string (e.g., "Blob A0" -> 0)
+            # Get the ID directly from our mapping
             if selected_blob:
-                selected_id = int(selected_blob.split("A")[1])
+                selected_id = blob_id_map[selected_blob]
                 
                 if (st.session_state.selected_element is None or 
                     st.session_state.selected_element['dist'] != 'A' or 
@@ -353,7 +356,10 @@ with right_col:
         
         # Add a selectbox to choose which blob to edit
         st.markdown("#### Select Blob to Manipulate")
-        blob_options = [f"Blob B{row['id']}" for _, row in df_b.iterrows()]
+        
+        # Create a mapping of blob IDs to display names
+        blob_id_map = {f"Blob B{int(row['id'])}": int(row['id']) for _, row in df_b.iterrows()}
+        blob_options = list(blob_id_map.keys())
         
         if blob_options:
             # Find current selection index if there is one
@@ -372,9 +378,9 @@ with right_col:
                 key="blob_selector_b"
             )
             
-            # Extract the ID from the selection string (e.g., "Blob B0" -> 0)
+            # Get the ID directly from our mapping
             if selected_blob:
-                selected_id = int(selected_blob.split("B")[1])
+                selected_id = blob_id_map[selected_blob]
                 
                 if (st.session_state.selected_element is None or 
                     st.session_state.selected_element['dist'] != 'B' or 
