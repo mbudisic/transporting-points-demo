@@ -8,6 +8,70 @@ class VisualizationService:
     Service for visualizing distributions and transport plans
     """
     
+    @staticmethod
+    def create_standard_visualization(dist_a=None, dist_b=None, show_both=True):
+        """
+        Create a standard visualization of the distributions.
+        
+        Args:
+            dist_a: Distribution A (optional)
+            dist_b: Distribution B (optional)
+            show_both: Whether to show both distributions
+            
+        Returns:
+            Plotly figure
+        """
+        # Determine which distribution is active based on what's provided
+        active_distribution = 'A'
+        if dist_a is None and dist_b is not None:
+            active_distribution = 'B'
+            
+        # Create the plot using the interactive plot function
+        return VisualizationService.create_interactive_plot(
+            distribution_a=dist_a if dist_a is not None else Distribution(),
+            distribution_b=dist_b if dist_b is not None else Distribution(),
+            active_distribution=active_distribution,
+            show_both=show_both
+        )
+        
+    @staticmethod
+    def add_transport_plan_to_figure(fig, distribution_a, distribution_b, transport_plan, mode='bottleneck'):
+        """
+        Add a transport plan visualization to an existing figure
+        
+        Args:
+            fig: Plotly figure to add transport plan to
+            distribution_a: Distribution A
+            distribution_b: Distribution B
+            transport_plan: Transport plan (varies by type)
+            mode: 'bottleneck' or 'wasserstein'
+            
+        Returns:
+            Updated figure with transport plan lines
+        """
+        if mode == 'bottleneck':
+            # Bottleneck transport plans have format [(idx_a, idx_b), ...]
+            if transport_plan:
+                return VisualizationService._add_transport_edges(
+                    fig, 
+                    distribution_a, 
+                    distribution_b,
+                    show_bottleneck_lines=True,
+                    bottleneck_pairs=transport_plan
+                )
+        elif mode == 'wasserstein':
+            # Wasserstein transport plans have format [(idx_a, idx_b, weight), ...]
+            if transport_plan:
+                return VisualizationService._add_transport_edges(
+                    fig, 
+                    distribution_a, 
+                    distribution_b,
+                    show_wasserstein_lines=True,
+                    wasserstein_pairs=transport_plan
+                )
+                
+        return fig
+    
     # The _add_transport_edges function is defined below, we don't need a duplicate implementation
     @staticmethod
     def _scale_heights_for_markers(distribution_a: Distribution, distribution_b: Distribution):
