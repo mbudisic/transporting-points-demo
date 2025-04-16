@@ -101,10 +101,10 @@ class DistanceCalculator:
             return 0.0, []
         
         # Separate positive and negative centers
-        pos_indices_a = [i for i, blob in enumerate(blobs_a) if blob.sign > 0]
-        neg_indices_a = [i for i, blob in enumerate(blobs_a) if blob.sign < 0]
-        pos_indices_b = [i for i, blob in enumerate(blobs_b) if blob.sign > 0]
-        neg_indices_b = [i for i, blob in enumerate(blobs_b) if blob.sign < 0]
+        pos_indices_a = [i for i, blob in enumerate(blobs_a) if blob.height > 0]
+        neg_indices_a = [i for i, blob in enumerate(blobs_a) if blob.height < 0]
+        pos_indices_b = [i for i, blob in enumerate(blobs_b) if blob.height > 0]
+        neg_indices_b = [i for i, blob in enumerate(blobs_b) if blob.height < 0]
         
         # Create matching pairs
         pairs = []
@@ -187,10 +187,10 @@ class DistanceCalculator:
             return 0.0, []
         
         # Separate positive and negative centers
-        pos_indices_a = [i for i, blob in enumerate(blobs_a) if blob.sign > 0]
-        neg_indices_a = [i for i, blob in enumerate(blobs_a) if blob.sign < 0]
-        pos_indices_b = [i for i, blob in enumerate(blobs_b) if blob.sign > 0]
-        neg_indices_b = [i for i, blob in enumerate(blobs_b) if blob.sign < 0]
+        pos_indices_a = [i for i, blob in enumerate(blobs_a) if blob.height > 0]
+        neg_indices_a = [i for i, blob in enumerate(blobs_a) if blob.height < 0]
+        pos_indices_b = [i for i, blob in enumerate(blobs_b) if blob.height > 0]
+        neg_indices_b = [i for i, blob in enumerate(blobs_b) if blob.height < 0]
         
         matching_pairs = []
         max_distance = 0.0
