@@ -1,3 +1,8 @@
+"""
+Improved controller class for calculating distances between distributions using Python Optimal Transport (POT).
+This implementation includes optimized algorithms for Wasserstein and Bottleneck distance metrics.
+"""
+
 import numpy as np
 from typing import List, Tuple, Dict, Optional, Callable, Any, Union
 from models.distribution import Distribution
@@ -6,7 +11,6 @@ import ot
 import networkx as nx
 from scipy.optimize import linear_sum_assignment
 from networkx.algorithms.flow import maximum_flow
-from controllers.improved_wasserstein import improved_wasserstein_plan, improved_bottleneck_plan
 
 class POTDistanceCalculator:
     """
@@ -240,8 +244,12 @@ class POTDistanceCalculator:
             A tuple containing (wasserstein_distance, matching_pairs)
             where matching_pairs is a list of tuples (idx_a, idx_b, weight)
         """
-        # Use our improved implementation
-        return improved_wasserstein_plan(dist_a, dist_b)
+        blobs_a = dist_a.blobs
+        blobs_b = dist_b.blobs
+        
+        # Handle empty distributions
+        if not blobs_a or not blobs_b:
+            return 0.0, []
         
         # Separate positive and negative blobs
         pos_blobs_a = [b for b in blobs_a if b.height > 0]
@@ -263,6 +271,9 @@ class POTDistanceCalculator:
             # Create spatial cost matrix
             cost_matrix = POTDistanceCalculator._create_cost_matrix_spatial(pos_blobs_a, pos_blobs_b)
             
+            # Square the cost matrix for 2-Wasserstein distance
+            cost_matrix_squared = cost_matrix ** 2
+            
             # Create weight vectors
             a = np.array([b.height for b in pos_blobs_a])
             b = np.array([b.height for b in pos_blobs_b])
@@ -271,11 +282,11 @@ class POTDistanceCalculator:
             a = a / np.sum(a)
             b = b / np.sum(b)
             
-            # Calculate optimal transport plan using the exact EMD solver (more robust than Sinkhorn)
-            transport_plan = ot.emd(a, b, cost_matrix)
+            # Calculate optimal transport plan using the exact EMD solver
+            transport_plan = ot.emd(a, b, cost_matrix_squared)
             
-            # Calculate the Wasserstein distance
-            wasserstein_dist = np.sum(transport_plan * cost_matrix)
+            # Calculate the Wasserstein-2 distance using our improved calculator
+            wasserstein_dist = POTDistanceCalculator.w2_exact(a, b, cost_matrix_squared)
             total_distance += wasserstein_dist
             
             # Add matching pairs to result
@@ -291,6 +302,9 @@ class POTDistanceCalculator:
             # Create spatial cost matrix
             cost_matrix = POTDistanceCalculator._create_cost_matrix_spatial(neg_blobs_a, neg_blobs_b)
             
+            # Square the cost matrix for 2-Wasserstein distance
+            cost_matrix_squared = cost_matrix ** 2
+            
             # Create weight vectors (use absolute values)
             a = np.array([abs(b.height) for b in neg_blobs_a])
             b = np.array([abs(b.height) for b in neg_blobs_b])
@@ -299,11 +313,11 @@ class POTDistanceCalculator:
             a = a / np.sum(a)
             b = b / np.sum(b)
             
-            # Calculate optimal transport plan using the exact EMD solver (more robust than Sinkhorn)
-            transport_plan = ot.emd(a, b, cost_matrix)
+            # Calculate optimal transport plan using the exact EMD solver
+            transport_plan = ot.emd(a, b, cost_matrix_squared)
             
-            # Calculate the Wasserstein distance
-            wasserstein_dist = np.sum(transport_plan * cost_matrix)
+            # Calculate the Wasserstein-2 distance using our improved calculator
+            wasserstein_dist = POTDistanceCalculator.w2_exact(a, b, cost_matrix_squared)
             total_distance += wasserstein_dist
             
             # Add matching pairs to result
@@ -319,10 +333,8 @@ class POTDistanceCalculator:
     @staticmethod
     def calculate_bottleneck(dist_a: Distribution, dist_b: Distribution) -> Tuple[float, List[Tuple[int, int]]]:
         """
-        Calculate bottleneck distance and matching using worst-cost matching algorithm with
-        POT-computed distance matrices, respecting sign of weights.
-        
-        The bottleneck distance is the cost of the worst-case assignment in an optimal matching.
+        Calculate bottleneck distance and matching using our improved bottleneck algorithm that
+        leverages max-flow for more accurate results, respecting sign of weights.
         
         Args:
             dist_a: First distribution
@@ -356,45 +368,85 @@ class POTDistanceCalculator:
         
         # Process positive blobs
         if pos_blobs_a and pos_blobs_b:
-            # Create spatial cost matrix using POT's distance function
+            # Create spatial cost matrix
             cost_matrix = POTDistanceCalculator._create_cost_matrix_spatial(pos_blobs_a, pos_blobs_b)
             
-            # Use scipy's linear_sum_assignment for the assignment problem (Hungarian algorithm)
-            row_ind, col_ind = linear_sum_assignment(cost_matrix)
+            # Create weight arrays
+            a = np.array([b.height for b in pos_blobs_a])
+            b = np.array([b.height for b in pos_blobs_b])
             
-            # Find the maximum cost in the assignment (bottleneck distance)
-            pos_bottleneck = 0.0
-            pos_matching: List[Tuple[int, int]] = []
-            
-            for i, j in zip(row_ind, col_ind):
-                if i < len(pos_indices_a) and j < len(pos_indices_b):
-                    orig_idx_a = pos_indices_a[i]
-                    orig_idx_b = pos_indices_b[j]
-                    pos_matching.append((orig_idx_a, orig_idx_b))
-                    pos_bottleneck = max(pos_bottleneck, cost_matrix[i, j])
-            
+            # Calculate bottleneck distance using our improved algorithm
+            if len(a) <= len(b):  # Ensure a is the smaller array for bottleneck
+                pos_bottleneck = POTDistanceCalculator.winf_bottleneck(a, b, cost_matrix)
+                
+                # Use scipy's linear_sum_assignment to get the matchings
+                row_ind, col_ind = linear_sum_assignment(cost_matrix)
+                
+                pos_matching: List[Tuple[int, int]] = []
+                for i, j in zip(row_ind, col_ind):
+                    if i < len(pos_indices_a) and j < len(pos_indices_b):
+                        orig_idx_a = pos_indices_a[i]
+                        orig_idx_b = pos_indices_b[j]
+                        # Only include matches that contribute to the bottleneck
+                        if cost_matrix[i, j] <= pos_bottleneck + 1e-10:  # Add small epsilon for numerical stability
+                            pos_matching.append((orig_idx_a, orig_idx_b))
+            else:
+                pos_bottleneck = POTDistanceCalculator.winf_bottleneck(b, a, cost_matrix.T)
+                
+                # Use scipy's linear_sum_assignment to get the matchings
+                row_ind, col_ind = linear_sum_assignment(cost_matrix.T)
+                
+                pos_matching: List[Tuple[int, int]] = []
+                for i, j in zip(row_ind, col_ind):
+                    if i < len(pos_indices_b) and j < len(pos_indices_a):
+                        orig_idx_a = pos_indices_a[j]
+                        orig_idx_b = pos_indices_b[i]
+                        # Only include matches that contribute to the bottleneck
+                        if cost_matrix[j, i] <= pos_bottleneck + 1e-10:  # Add small epsilon for numerical stability
+                            pos_matching.append((orig_idx_a, orig_idx_b))
+                    
             # Add the matching pairs and update the max distance
             pairs.extend(pos_matching)
             max_distance = max(max_distance, pos_bottleneck)
         
         # Process negative blobs
         if neg_blobs_a and neg_blobs_b:
-            # Create spatial cost matrix using POT's distance function
+            # Create spatial cost matrix
             cost_matrix = POTDistanceCalculator._create_cost_matrix_spatial(neg_blobs_a, neg_blobs_b)
             
-            # Use scipy's linear_sum_assignment for the assignment problem (Hungarian algorithm)
-            row_ind, col_ind = linear_sum_assignment(cost_matrix)
+            # Create weight arrays (use absolute values)
+            a = np.array([abs(b.height) for b in neg_blobs_a])
+            b = np.array([abs(b.height) for b in neg_blobs_b])
             
-            # Find the maximum cost in the assignment (bottleneck distance)
-            neg_bottleneck = 0.0
-            neg_matching: List[Tuple[int, int]] = []
-            
-            for i, j in zip(row_ind, col_ind):
-                if i < len(neg_indices_a) and j < len(neg_indices_b):
-                    orig_idx_a = neg_indices_a[i]
-                    orig_idx_b = neg_indices_b[j]
-                    neg_matching.append((orig_idx_a, orig_idx_b))
-                    neg_bottleneck = max(neg_bottleneck, cost_matrix[i, j])
+            # Calculate bottleneck distance using our improved algorithm
+            if len(a) <= len(b):  # Ensure a is the smaller array for bottleneck
+                neg_bottleneck = POTDistanceCalculator.winf_bottleneck(a, b, cost_matrix)
+                
+                # Use scipy's linear_sum_assignment to get the matchings
+                row_ind, col_ind = linear_sum_assignment(cost_matrix)
+                
+                neg_matching: List[Tuple[int, int]] = []
+                for i, j in zip(row_ind, col_ind):
+                    if i < len(neg_indices_a) and j < len(neg_indices_b):
+                        orig_idx_a = neg_indices_a[i]
+                        orig_idx_b = neg_indices_b[j]
+                        # Only include matches that contribute to the bottleneck
+                        if cost_matrix[i, j] <= neg_bottleneck + 1e-10:  # Add small epsilon for numerical stability
+                            neg_matching.append((orig_idx_a, orig_idx_b))
+            else:
+                neg_bottleneck = POTDistanceCalculator.winf_bottleneck(b, a, cost_matrix.T)
+                
+                # Use scipy's linear_sum_assignment to get the matchings
+                row_ind, col_ind = linear_sum_assignment(cost_matrix.T)
+                
+                neg_matching: List[Tuple[int, int]] = []
+                for i, j in zip(row_ind, col_ind):
+                    if i < len(neg_indices_b) and j < len(neg_indices_a):
+                        orig_idx_a = neg_indices_a[j]
+                        orig_idx_b = neg_indices_b[i]
+                        # Only include matches that contribute to the bottleneck
+                        if cost_matrix[j, i] <= neg_bottleneck + 1e-10:  # Add small epsilon for numerical stability
+                            neg_matching.append((orig_idx_a, orig_idx_b))
             
             # Add the matching pairs and update the max distance
             pairs.extend(neg_matching)
@@ -444,6 +496,9 @@ class POTDistanceCalculator:
             # Create height cost matrix
             cost_matrix = POTDistanceCalculator._create_cost_matrix_heights(pos_blobs_a, pos_blobs_b)
             
+            # Square the cost matrix for 2-Wasserstein distance
+            cost_matrix_squared = cost_matrix ** 2
+            
             # Create weight vectors
             a = np.array([b.height for b in pos_blobs_a])
             b = np.array([b.height for b in pos_blobs_b])
@@ -452,11 +507,11 @@ class POTDistanceCalculator:
             a = a / np.sum(a)
             b = b / np.sum(b)
             
-            # Calculate optimal transport plan using the exact EMD solver (more robust than Sinkhorn)
-            transport_plan = ot.emd(a, b, cost_matrix)
+            # Calculate optimal transport plan using the exact EMD solver
+            transport_plan = ot.emd(a, b, cost_matrix_squared)
             
-            # Calculate the Wasserstein distance
-            wasserstein_dist = np.sum(transport_plan * cost_matrix)
+            # Calculate the Wasserstein-2 distance using our improved calculator
+            wasserstein_dist = POTDistanceCalculator.w2_exact(a, b, cost_matrix_squared)
             total_distance += wasserstein_dist
             
             # Add matching pairs to result
@@ -472,6 +527,9 @@ class POTDistanceCalculator:
             # Create height cost matrix
             cost_matrix = POTDistanceCalculator._create_cost_matrix_heights(neg_blobs_a, neg_blobs_b)
             
+            # Square the cost matrix for 2-Wasserstein distance
+            cost_matrix_squared = cost_matrix ** 2
+            
             # Create weight vectors (use absolute values)
             a = np.array([abs(b.height) for b in neg_blobs_a])
             b = np.array([abs(b.height) for b in neg_blobs_b])
@@ -480,11 +538,11 @@ class POTDistanceCalculator:
             a = a / np.sum(a)
             b = b / np.sum(b)
             
-            # Calculate optimal transport plan using the exact EMD solver (more robust than Sinkhorn)
-            transport_plan = ot.emd(a, b, cost_matrix)
+            # Calculate optimal transport plan using the exact EMD solver
+            transport_plan = ot.emd(a, b, cost_matrix_squared)
             
-            # Calculate the Wasserstein distance
-            wasserstein_dist = np.sum(transport_plan * cost_matrix)
+            # Calculate the Wasserstein-2 distance using our improved calculator
+            wasserstein_dist = POTDistanceCalculator.w2_exact(a, b, cost_matrix_squared)
             total_distance += wasserstein_dist
             
             # Add matching pairs to result
@@ -500,8 +558,8 @@ class POTDistanceCalculator:
     @staticmethod
     def calculate_height_bottleneck_plan(dist_a: Distribution, dist_b: Distribution) -> Tuple[float, List[Tuple[int, int]]]:
         """
-        Calculate bottleneck distance and matching based only on blob heights using POT
-        for distance computation and custom worst-cost matching algorithm.
+        Calculate bottleneck distance and matching based only on blob heights using our improved
+        bottleneck algorithm that leverages max-flow for more accurate results.
         
         Args:
             dist_a: First distribution
@@ -535,22 +593,42 @@ class POTDistanceCalculator:
         
         # Process positive blobs
         if pos_blobs_a and pos_blobs_b:
-            # Create height cost matrix using POT's distance function
+            # Create height cost matrix
             cost_matrix = POTDistanceCalculator._create_cost_matrix_heights(pos_blobs_a, pos_blobs_b)
             
-            # Use scipy's linear_sum_assignment for the assignment problem (Hungarian algorithm)
-            row_ind, col_ind = linear_sum_assignment(cost_matrix)
+            # Create weight arrays
+            a = np.array([b.height for b in pos_blobs_a])
+            b = np.array([b.height for b in pos_blobs_b])
             
-            # Find the maximum cost in the assignment (bottleneck distance)
-            pos_bottleneck = 0.0
-            pos_matching: List[Tuple[int, int]] = []
-            
-            for i, j in zip(row_ind, col_ind):
-                if i < len(pos_indices_a) and j < len(pos_indices_b):
-                    orig_idx_a = pos_indices_a[i]
-                    orig_idx_b = pos_indices_b[j]
-                    pos_matching.append((orig_idx_a, orig_idx_b))
-                    pos_bottleneck = max(pos_bottleneck, cost_matrix[i, j])
+            # Calculate bottleneck distance using our improved algorithm
+            if len(a) <= len(b):  # Ensure a is the smaller array for bottleneck
+                pos_bottleneck = POTDistanceCalculator.winf_bottleneck(a, b, cost_matrix)
+                
+                # Use scipy's linear_sum_assignment to get the matchings
+                row_ind, col_ind = linear_sum_assignment(cost_matrix)
+                
+                pos_matching: List[Tuple[int, int]] = []
+                for i, j in zip(row_ind, col_ind):
+                    if i < len(pos_indices_a) and j < len(pos_indices_b):
+                        orig_idx_a = pos_indices_a[i]
+                        orig_idx_b = pos_indices_b[j]
+                        # Only include matches that contribute to the bottleneck
+                        if cost_matrix[i, j] <= pos_bottleneck + 1e-10:  # Add small epsilon for numerical stability
+                            pos_matching.append((orig_idx_a, orig_idx_b))
+            else:
+                pos_bottleneck = POTDistanceCalculator.winf_bottleneck(b, a, cost_matrix.T)
+                
+                # Use scipy's linear_sum_assignment to get the matchings
+                row_ind, col_ind = linear_sum_assignment(cost_matrix.T)
+                
+                pos_matching: List[Tuple[int, int]] = []
+                for i, j in zip(row_ind, col_ind):
+                    if i < len(pos_indices_b) and j < len(pos_indices_a):
+                        orig_idx_a = pos_indices_a[j]
+                        orig_idx_b = pos_indices_b[i]
+                        # Only include matches that contribute to the bottleneck
+                        if cost_matrix[j, i] <= pos_bottleneck + 1e-10:  # Add small epsilon for numerical stability
+                            pos_matching.append((orig_idx_a, orig_idx_b))
             
             # Add the matching pairs and update the max distance
             pairs.extend(pos_matching)
@@ -558,22 +636,42 @@ class POTDistanceCalculator:
         
         # Process negative blobs
         if neg_blobs_a and neg_blobs_b:
-            # Create height cost matrix using POT's distance function
+            # Create height cost matrix
             cost_matrix = POTDistanceCalculator._create_cost_matrix_heights(neg_blobs_a, neg_blobs_b)
             
-            # Use scipy's linear_sum_assignment for the assignment problem (Hungarian algorithm)
-            row_ind, col_ind = linear_sum_assignment(cost_matrix)
+            # Create weight arrays (use absolute values)
+            a = np.array([abs(b.height) for b in neg_blobs_a])
+            b = np.array([abs(b.height) for b in neg_blobs_b])
             
-            # Find the maximum cost in the assignment (bottleneck distance)
-            neg_bottleneck = 0.0
-            neg_matching: List[Tuple[int, int]] = []
-            
-            for i, j in zip(row_ind, col_ind):
-                if i < len(neg_indices_a) and j < len(neg_indices_b):
-                    orig_idx_a = neg_indices_a[i]
-                    orig_idx_b = neg_indices_b[j]
-                    neg_matching.append((orig_idx_a, orig_idx_b))
-                    neg_bottleneck = max(neg_bottleneck, cost_matrix[i, j])
+            # Calculate bottleneck distance using our improved algorithm
+            if len(a) <= len(b):  # Ensure a is the smaller array for bottleneck
+                neg_bottleneck = POTDistanceCalculator.winf_bottleneck(a, b, cost_matrix)
+                
+                # Use scipy's linear_sum_assignment to get the matchings
+                row_ind, col_ind = linear_sum_assignment(cost_matrix)
+                
+                neg_matching: List[Tuple[int, int]] = []
+                for i, j in zip(row_ind, col_ind):
+                    if i < len(neg_indices_a) and j < len(neg_indices_b):
+                        orig_idx_a = neg_indices_a[i]
+                        orig_idx_b = neg_indices_b[j]
+                        # Only include matches that contribute to the bottleneck
+                        if cost_matrix[i, j] <= neg_bottleneck + 1e-10:  # Add small epsilon for numerical stability
+                            neg_matching.append((orig_idx_a, orig_idx_b))
+            else:
+                neg_bottleneck = POTDistanceCalculator.winf_bottleneck(b, a, cost_matrix.T)
+                
+                # Use scipy's linear_sum_assignment to get the matchings
+                row_ind, col_ind = linear_sum_assignment(cost_matrix.T)
+                
+                neg_matching: List[Tuple[int, int]] = []
+                for i, j in zip(row_ind, col_ind):
+                    if i < len(neg_indices_b) and j < len(neg_indices_a):
+                        orig_idx_a = neg_indices_a[j]
+                        orig_idx_b = neg_indices_b[i]
+                        # Only include matches that contribute to the bottleneck
+                        if cost_matrix[j, i] <= neg_bottleneck + 1e-10:  # Add small epsilon for numerical stability
+                            neg_matching.append((orig_idx_a, orig_idx_b))
             
             # Add the matching pairs and update the max distance
             pairs.extend(neg_matching)
@@ -606,18 +704,18 @@ class POTDistanceCalculator:
         
         if not blobs_a or not blobs_b:
             return np.array([]), [], []
-        
+            
         indices_a = list(range(len(blobs_a)))
         indices_b = list(range(len(blobs_b)))
         
         if metric == 'spatial':
-            # Create distance matrix based on spatial distances
-            cost_matrix = POTDistanceCalculator._create_cost_matrix_spatial(blobs_a, blobs_b)
-        else:  # 'height'
-            # Create distance matrix based on height differences
-            cost_matrix = POTDistanceCalculator._create_cost_matrix_heights(blobs_a, blobs_b)
-        
-        return cost_matrix, indices_a, indices_b
+            distance_matrix = POTDistanceCalculator._create_cost_matrix_spatial(blobs_a, blobs_b)
+        elif metric == 'height':
+            distance_matrix = POTDistanceCalculator._create_cost_matrix_heights(blobs_a, blobs_b)
+        else:
+            raise ValueError(f"Unsupported metric: {metric}")
+            
+        return distance_matrix, indices_a, indices_b
     
     @staticmethod
     def explain_matching(
@@ -639,35 +737,41 @@ class POTDistanceCalculator:
         Returns:
             List of dictionaries with detailed information about each match
         """
-        blobs_a = dist_a.blobs
-        blobs_b = dist_b.blobs
+        result = []
         
-        explanations: List[Dict[str, Any]] = []
-        
-        if weights is None:
-            weights = [1.0] * len(matching_pairs)
-        
-        for (idx_a, idx_b), weight in zip(matching_pairs, weights):
-            if idx_a < len(blobs_a) and idx_b < len(blobs_b):
-                blob_a = blobs_a[idx_a]
-                blob_b = blobs_b[idx_b]
+        for idx, (i, j) in enumerate(matching_pairs):
+            # For safety, make sure both indices exist
+            if (i < len(dist_a.blobs) and j < len(dist_b.blobs)):
+                blob_a = dist_a.blobs[i]
+                blob_b = dist_b.blobs[j]
                 
-                # Calculate metrics
-                spatial_distance = np.sqrt((blob_a.center[0] - blob_b.center[0])**2 + 
-                                          (blob_a.center[1] - blob_b.center[1])**2)
-                height_difference = abs(blob_a.height - blob_b.height)
+                # Calculate Euclidean distance between the points
+                xa, ya = blob_a.center
+                xb, yb = blob_b.center
+                euclidean_dist = np.sqrt((xa - xb)**2 + (ya - yb)**2)
                 
-                explanation = {
-                    "blob_a_id": idx_a,
-                    "blob_b_id": idx_b,
-                    "blob_a_position": blob_a.center,
-                    "blob_b_position": blob_b.center,
-                    "blob_a_height": blob_a.height,
-                    "blob_b_height": blob_b.height,
-                    "spatial_distance": spatial_distance,
-                    "height_distance": height_difference,
-                    "weight": weight
+                # Calculate height difference
+                ha = blob_a.height
+                hb = blob_b.height
+                height_diff = abs(ha - hb)
+                
+                # Prepare the match explanation
+                match_info = {
+                    "idx": idx,
+                    "blob_a_index": i,
+                    "blob_b_index": j,
+                    "blob_a_pos": (xa, ya),
+                    "blob_b_pos": (xb, yb),
+                    "blob_a_height": ha,
+                    "blob_b_height": hb,
+                    "euclidean_distance": euclidean_dist,
+                    "height_difference": height_diff
                 }
-                explanations.append(explanation)
-        
-        return explanations
+                
+                # Add weight information if available
+                if weights and idx < len(weights):
+                    match_info["weight"] = weights[idx]
+                    
+                result.append(match_info)
+                
+        return result
