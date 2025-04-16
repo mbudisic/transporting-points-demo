@@ -170,7 +170,7 @@ with left_col:
                 "x": st.column_config.NumberColumn("X", min_value=0, max_value=10, format="%.2f"),
                 "y": st.column_config.NumberColumn("Y", min_value=0, max_value=10, format="%.2f"),
                 "variance": st.column_config.NumberColumn("Variance", min_value=0.1, max_value=5, format="%.2f"),
-                "height": st.column_config.NumberColumn("Height", min_value=0.1, max_value=10, format="%.2f"),
+                "height": st.column_config.NumberColumn("Height", min_value=-10, max_value=10, format="%.2f"),
                 "sign": st.column_config.SelectboxColumn("Sign", options=[1, -1])
             }
         )
@@ -210,7 +210,7 @@ with right_col:
                 "x": st.column_config.NumberColumn("X", min_value=0, max_value=10, format="%.2f"),
                 "y": st.column_config.NumberColumn("Y", min_value=0, max_value=10, format="%.2f"),
                 "variance": st.column_config.NumberColumn("Variance", min_value=0.1, max_value=5, format="%.2f"),
-                "height": st.column_config.NumberColumn("Height", min_value=0.1, max_value=10, format="%.2f"),
+                "height": st.column_config.NumberColumn("Height", min_value=-10, max_value=10, format="%.2f"),
                 "sign": st.column_config.SelectboxColumn("Sign", options=[1, -1])
             }
         )
