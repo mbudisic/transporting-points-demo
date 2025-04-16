@@ -10,8 +10,8 @@ from models.distribution import Distribution
 from models.blob import Blob
 from controllers.app_state import AppState
 from controllers.pot_distance_calculator_improved import POTDistanceCalculator  # Using the improved POT-based calculator
-from controllers.distribution_controller import DistributionController
-from controllers.event_handler import EventHandler
+from controllers.distribution_controller_improved import DistributionController  # Using the improved controller
+from controllers.event_handler_improved import EventHandler  # Using the improved event handler
 from views.visualization import VisualizationService
 from views.ui_components import UIComponents
 
