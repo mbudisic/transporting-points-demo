@@ -91,7 +91,7 @@ class VisualizationService:
                 
                 # Add markers for blob centers in distribution A
                 for blob in distribution_a.blobs:
-                    marker_symbol = 'circle-plus' if blob.sign > 0 else 'circle-x'
+                    marker_symbol = "circle" if blob.sign > 0 else "x"
                     marker_color = 'rgba(255, 0, 0, 0.8)' if blob.sign > 0 else 'rgba(100, 0, 0, 0.8)'
                     
                     fig.add_trace(go.Scatter(
@@ -187,7 +187,7 @@ class VisualizationService:
                 
                 # Add markers for blob centers in distribution B
                 for blob in distribution_b.blobs:
-                    marker_symbol = 'circle-plus' if blob.sign > 0 else 'circle-x'
+                    marker_symbol = "circle" if blob.sign > 0 else "x"
                     marker_color = 'rgba(0, 0, 255, 0.8)' if blob.sign > 0 else 'rgba(0, 0, 100, 0.8)'
                     
                     fig.add_trace(go.Scatter(
