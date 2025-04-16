@@ -491,16 +491,22 @@ class UIComponents:
                 AppState.toggle_show_both()
                 on_update()
         
-        # Create interactive plot
+        # Create interactive plot with all transport plan options
         fig = visualization_service.create_interactive_plot(
             distribution_a,
             distribution_b,
             active_distribution=AppState.get_active_distribution(),
             show_both=AppState.is_showing_both(),
+            # Spatial transport plans
             show_bottleneck_lines=AppState.is_showing_bottleneck(),
             bottleneck_pairs=AppState.get_bottleneck_matching(),
             show_wasserstein_lines=AppState.is_showing_wasserstein(),
-            wasserstein_pairs=AppState.get_wasserstein_pairs()
+            wasserstein_pairs=AppState.get_wasserstein_pairs(),
+            # Height-based transport plans
+            show_height_bottleneck_lines=AppState.is_showing_height_bottleneck(),
+            height_bottleneck_pairs=AppState.get_height_bottleneck_matching(),
+            show_height_wasserstein_lines=AppState.is_showing_height_wasserstein(),
+            height_wasserstein_pairs=AppState.get_height_wasserstein_pairs()
         )
         
         # Set the dragmode to 'drag' to support element dragging
@@ -535,14 +541,14 @@ class UIComponents:
             # Calculate distances based on spatial positions
             wasserstein_continuous = calculator.calculate_wasserstein_continuous(distribution_a, distribution_b)
             wasserstein_discrete = calculator.calculate_wasserstein_discrete(distribution_a, distribution_b)
-            bottleneck_value, matching_pairs = calculator.calculate_bottleneck(distribution_a, distribution_b)
+            bottleneck_value, bottleneck_pairs = calculator.calculate_bottleneck(distribution_a, distribution_b)
             
             # Calculate distances based on heights only
             wasserstein_heights = calculator.calculate_wasserstein_by_heights(distribution_a, distribution_b)
             bottleneck_heights = calculator.calculate_bottleneck_by_heights(distribution_a, distribution_b)
             
             # Store the bottleneck matching in session state for visualization
-            AppState.store_bottleneck_matching(matching_pairs)
+            AppState.store_bottleneck_matching(bottleneck_pairs)
             
             # Display spatial metrics in a box
             st.markdown("### Spatial Distribution Distances")
@@ -573,12 +579,9 @@ class UIComponents:
                 st.info("Maximum difference between sorted heights, ignoring positions.")
                 
                 # Calculate all transportation plans
-                # Spatial transportation plans
+                # Spatial transport plan for Wasserstein
                 wasserstein_value, wasserstein_pairs = calculator.calculate_wasserstein_plan(distribution_a, distribution_b)
                 AppState.store_wasserstein_pairs(wasserstein_pairs)
-                
-                bottleneck_value, bottleneck_pairs = calculator.calculate_bottleneck(distribution_a, distribution_b)
-                AppState.store_bottleneck_matching(bottleneck_pairs)
                 
                 # Height-based transportation plans
                 height_wasserstein_value, height_wasserstein_pairs = calculator.calculate_height_wasserstein_plan(distribution_a, distribution_b)
