@@ -21,8 +21,10 @@ This application allows users to:
 
 - **Interactive Distribution Creation**: Add, remove, and modify Gaussian blobs with intuitive controls
 - **Real-time Visualization**: See immediate updates to distances and transport plans as distributions change
+- **Contour Plot Visualization**: Toggle contour plots for distributions with adjustable opacity
 - **Distance Matrices**: View detailed distance matrices showing pairwise blob distances
 - **Multiple Distance Metrics**: Compare different ways of measuring distribution distances
+- **Sign-Based Visualization**: Dashed circles for positive heights, dotted for negative heights
 - **Import/Export**: Save and load distribution configurations for reproducibility, and export focused reports containing only the selected transport plan
 
 ## Documentation
@@ -58,9 +60,8 @@ See the [Deployment Guide](DEPLOYMENT.md) for detailed installation instructions
 # Quick start
 git clone <repository-url>
 cd <repository-directory>
-pip install uv
-uv pip install --resolution highest -e .
-streamlit run app_mvc.py
+pip install -r requirements.txt
+streamlit run app.py
 ```
 
 ## Educational Value

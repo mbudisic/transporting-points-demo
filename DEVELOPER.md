@@ -14,13 +14,16 @@ This application follows the Model-View-Controller (MVC) architectural pattern f
 │   └── distribution.py      # Collection of blobs forming a distribution
 ├── controllers/             # Application logic
 │   ├── app_state.py         # Manages application state
-│   ├── distance_calculator.py # Calculates metrics and transport plans
+│   ├── pot_distance_calculator.py # Calculates metrics and transport plans using POT package
 │   ├── distribution_controller.py # Manipulates distributions
 │   └── event_handler.py     # Handles UI events
 ├── views/                   # User interface components
 │   ├── ui_components.py     # Streamlit UI components
-│   └── visualization.py     # Plotting and visualization
-├── app_mvc.py               # Main application entry point
+│   ├── visualization.py     # Plotting and visualization
+│   └── graph_visualization.py # Additional visualization for complex graph structures
+├── utils/                   # Utilities and helpers
+│   └── export_utils.py      # Utilities for exporting data
+├── app.py                   # Main application entry point
 ```
 
 ## Core Components
@@ -48,11 +51,14 @@ This application follows the Model-View-Controller (MVC) architectural pattern f
 - Stores and retrieves application settings
 - Tracks which distribution is active
 - Controls transportation plan visualization settings
+- Manages contour plot visibility and opacity settings
+- Tracks selected elements for user interaction
 
-#### DistanceCalculator (controllers/distance_calculator.py)
-- Calculates Wasserstein and bottleneck distances between distributions
+#### POTDistanceCalculator (controllers/pot_distance_calculator.py)
+- Calculates Wasserstein and bottleneck distances between distributions using the Python Optimal Transport (POT) package
 - Implements both spatial and height-based distance metrics
 - Computes transportation plans for visualization
+- Provides helper methods for mathematical validation
 
 #### DistributionController (controllers/distribution_controller.py)
 - High-level operations for manipulating distributions
