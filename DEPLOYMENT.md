@@ -55,10 +55,10 @@ This command will analyze the `pyproject.toml` file and install all the required
 ## Step 4: Run the Application
 
 ```bash
-streamlit run app_mvc.py
+streamlit run app.py
 ```
 
-This will start the application and open it in your default web browser. If it doesn't open automatically, you can access it at [http://localhost:8501](http://localhost:8501).
+This will start the application and open it in your default web browser. If it doesn't open automatically, you can access it at [http://localhost:5000](http://localhost:5000).
 
 ## Updating Dependencies
 
@@ -89,11 +89,11 @@ uv pip install --upgrade streamlit
 
 ### Common Issues
 
-1. **Error: Port 8501 is already in use**
-   - Another application is using port 8501
-   - Solution: Close other Streamlit applications or specify a different port:
+1. **Error: Port 5000 is already in use**
+   - Another application is using port 5000
+   - Solution: Close other applications or specify a different port:
      ```bash
-     streamlit run app_mvc.py --server.port 8502
+     streamlit run app.py --server.port 5001
      ```
 
 2. **Import Error: No module named 'streamlit'**
@@ -117,8 +117,9 @@ To customize the server settings, you can create a `.streamlit/config.toml` file
 
 ```toml
 [server]
-port = 8501
-address = "localhost"
+headless = true
+address = "0.0.0.0"
+port = 5000
 ```
 
 You can change the port and address as needed.
