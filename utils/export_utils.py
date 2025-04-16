@@ -9,16 +9,18 @@ import plotly.graph_objects as go
 from models.distribution import Distribution
 from controllers.distance_calculator import DistanceCalculator
 
-def generate_distribution_data(dist_a: Distribution, dist_b: Distribution) -> Dict[str, Any]:
+def generate_distribution_data(dist_a: Distribution, dist_b: Distribution, selected_transport: str = "hide") -> Dict[str, Any]:
     """
-    Generate a dictionary with all distribution data for export.
+    Generate a dictionary with distribution data for export, focusing on the selected transport plan.
     
     Args:
         dist_a: Distribution A
         dist_b: Distribution B
+        selected_transport: Currently selected transport plan ("bottleneck_spatial", "wasserstein_spatial", 
+                           "bottleneck_height", "wasserstein_height", or "hide")
         
     Returns:
-        Dictionary with all distribution data
+        Dictionary with focused distribution data
     """
     # Get basic distribution data
     data = {
@@ -33,8 +35,10 @@ def generate_distribution_data(dist_a: Distribution, dist_b: Distribution) -> Di
             "color": dist_b.color,
             "blobs": []
         },
+        "selected_transport_plan": selected_transport,
         "distance_metrics": {},
-        "transport_plans": {}
+        "transport_plans": {},
+        "distance_matrices": {}
     }
     
     # Add blob data
@@ -56,52 +60,61 @@ def generate_distribution_data(dist_a: Distribution, dist_b: Distribution) -> Di
             "height": blob.height
         })
     
-    # Calculate and add distance metrics if both distributions have blobs
-    if not dist_a.is_empty and not dist_b.is_empty:
-        # Wasserstein distances
-        wasserstein_continuous = DistanceCalculator.calculate_wasserstein_continuous(dist_a, dist_b)
-        wasserstein_discrete, wasserstein_pairs = DistanceCalculator.calculate_wasserstein_plan(dist_a, dist_b)
-        wasserstein_height, height_wasserstein_pairs = DistanceCalculator.calculate_height_wasserstein_plan(dist_a, dist_b)
-        
-        # Bottleneck distances
-        bottleneck, bottleneck_pairs = DistanceCalculator.calculate_bottleneck(dist_a, dist_b)
-        bottleneck_height, height_bottleneck_pairs = DistanceCalculator.calculate_height_bottleneck_plan(dist_a, dist_b)
-        
-        # Add distances to the output
+    # Calculate and add only the selected distance metric if both distributions have blobs
+    if not dist_a.is_empty and not dist_b.is_empty and selected_transport != "hide":
+        # Calculate only the selected metric and plan
+        if selected_transport == "bottleneck_spatial":
+            distance_value, matching_pairs = DistanceCalculator.calculate_bottleneck(dist_a, dist_b)
+            plan_explanation = DistanceCalculator.explain_matching(dist_a, dist_b, matching_pairs)
+            distance_matrix, idx_a, idx_b = DistanceCalculator.get_distance_matrix(dist_a, dist_b, 'spatial')
+            metric_name = "Spatial Bottleneck Distance"
+            
+        elif selected_transport == "wasserstein_spatial":
+            distance_value, transport_pairs = DistanceCalculator.calculate_wasserstein_plan(dist_a, dist_b)
+            matching_pairs = [(a, b) for a, b, _ in transport_pairs]
+            weights = [w for _, _, w in transport_pairs]
+            plan_explanation = DistanceCalculator.explain_matching(dist_a, dist_b, matching_pairs, weights)
+            distance_matrix, idx_a, idx_b = DistanceCalculator.get_distance_matrix(dist_a, dist_b, 'spatial')
+            metric_name = "Spatial Wasserstein Distance"
+            
+        elif selected_transport == "bottleneck_height":
+            distance_value, matching_pairs = DistanceCalculator.calculate_height_bottleneck_plan(dist_a, dist_b)
+            plan_explanation = DistanceCalculator.explain_matching(dist_a, dist_b, matching_pairs)
+            distance_matrix, idx_a, idx_b = DistanceCalculator.get_distance_matrix(dist_a, dist_b, 'height')
+            metric_name = "Height-Based Bottleneck Distance"
+            
+        elif selected_transport == "wasserstein_height":
+            distance_value, transport_pairs = DistanceCalculator.calculate_height_wasserstein_plan(dist_a, dist_b)
+            matching_pairs = [(a, b) for a, b, _ in transport_pairs]
+            weights = [w for _, _, w in transport_pairs]
+            plan_explanation = DistanceCalculator.explain_matching(dist_a, dist_b, matching_pairs, weights)
+            distance_matrix, idx_a, idx_b = DistanceCalculator.get_distance_matrix(dist_a, dist_b, 'height')
+            metric_name = "Height-Based Wasserstein Distance"
+            
+        else:
+            # Default case - shouldn't happen with proper selections
+            distance_value = 0
+            plan_explanation = []
+            distance_matrix = np.array([])
+            idx_a = []
+            idx_b = []
+            metric_name = "Unknown Distance"
+            
+        # Add only the selected metric to the output
         data["distance_metrics"] = {
-            "wasserstein_continuous": float(wasserstein_continuous),
-            "wasserstein_discrete": float(wasserstein_discrete),
-            "wasserstein_height": float(wasserstein_height),
-            "bottleneck": float(bottleneck),
-            "bottleneck_height": float(bottleneck_height)
+            "name": metric_name,
+            "value": float(distance_value)
         }
         
-        # Add transport plans with human-readable explanations
-        # Convert wasserstein pairs to the right format for explain_matching
-        wasserstein_pairs_format = [(a, b) for a, b, _ in wasserstein_pairs]
-        wasserstein_weights = [w for _, _, w in wasserstein_pairs]
+        # Add only the selected transport plan
+        data["transport_plans"] = plan_explanation
         
-        height_wasserstein_pairs_format = [(a, b) for a, b, _ in height_wasserstein_pairs]
-        height_wasserstein_weights = [w for _, _, w in height_wasserstein_pairs]
-        
-        # Add transport plans
-        data["transport_plans"] = {
-            "wasserstein": DistanceCalculator.explain_matching(dist_a, dist_b, wasserstein_pairs_format, wasserstein_weights),
-            "bottleneck": DistanceCalculator.explain_matching(dist_a, dist_b, bottleneck_pairs),
-            "wasserstein_height": DistanceCalculator.explain_matching(dist_a, dist_b, height_wasserstein_pairs_format, height_wasserstein_weights),
-            "bottleneck_height": DistanceCalculator.explain_matching(dist_a, dist_b, height_bottleneck_pairs)
-        }
-        
-        # Add distance matrices
-        spatial_matrix, idx_a, idx_b = DistanceCalculator.get_distance_matrix(dist_a, dist_b, 'spatial')
-        height_matrix, _, _ = DistanceCalculator.get_distance_matrix(dist_a, dist_b, 'height')
-        
-        # Convert matrices to lists for JSON serialization
+        # Add only the relevant distance matrix
         data["distance_matrices"] = {
-            "spatial": spatial_matrix.tolist() if len(spatial_matrix) > 0 else [],
-            "height": height_matrix.tolist() if len(height_matrix) > 0 else [],
+            "matrix": distance_matrix.tolist() if len(distance_matrix) > 0 else [],
             "blob_indices_a": idx_a,
-            "blob_indices_b": idx_b
+            "blob_indices_b": idx_b,
+            "metric_type": "spatial" if selected_transport in ["bottleneck_spatial", "wasserstein_spatial"] else "height"
         }
     
     return data
@@ -109,7 +122,8 @@ def generate_distribution_data(dist_a: Distribution, dist_b: Distribution) -> Di
 def generate_html_report(dist_a: Distribution, dist_b: Distribution, 
                          fig: Optional[go.Figure] = None) -> str:
     """
-    Generate an HTML report with all distribution data and visualizations.
+    Generate an HTML report with distribution data and visualizations.
+    Includes only the currently selected transport plan, its distance matrices, and optimal value.
     
     Args:
         dist_a: Distribution A
@@ -119,8 +133,19 @@ def generate_html_report(dist_a: Distribution, dist_b: Distribution,
     Returns:
         HTML string with the report
     """
-    # Get distribution data
-    data = generate_distribution_data(dist_a, dist_b)
+    # Determine which transport plan is currently selected
+    current_plan = "hide"
+    if AppState.is_showing_bottleneck():
+        current_plan = "bottleneck_spatial"
+    elif AppState.is_showing_wasserstein():
+        current_plan = "wasserstein_spatial"
+    elif AppState.is_showing_height_bottleneck():
+        current_plan = "bottleneck_height"
+    elif AppState.is_showing_height_wasserstein():
+        current_plan = "wasserstein_height"
+    
+    # Get distribution data with focus on selected transport plan
+    data = generate_distribution_data(dist_a, dist_b, current_plan)
     
     # Generate HTML content
     html = f"""
@@ -211,35 +236,19 @@ def generate_html_report(dist_a: Distribution, dist_b: Distribution,
         <div class="separator"></div>
     """
     
-    # Add distance metrics if available
+    # Add selected distance metric if available
     if "distance_metrics" in data and data["distance_metrics"]:
-        metrics = data["distance_metrics"]
+        metric = data["distance_metrics"]
         html += f"""
-        <h2>Distance Metrics</h2>
+        <h2>Selected Distance Metric</h2>
         <table>
             <tr>
                 <th>Metric</th>
                 <th>Value</th>
             </tr>
             <tr>
-                <td>Wasserstein (Continuous)</td>
-                <td class="metric">{metrics['wasserstein_continuous']:.6f}</td>
-            </tr>
-            <tr>
-                <td>Wasserstein (Discrete)</td>
-                <td class="metric">{metrics['wasserstein_discrete']:.6f}</td>
-            </tr>
-            <tr>
-                <td>Bottleneck Distance</td>
-                <td class="metric">{metrics['bottleneck']:.6f}</td>
-            </tr>
-            <tr>
-                <td>Wasserstein (Height-Based)</td>
-                <td class="metric">{metrics['wasserstein_height']:.6f}</td>
-            </tr>
-            <tr>
-                <td>Bottleneck (Height-Based)</td>
-                <td class="metric">{metrics['bottleneck_height']:.6f}</td>
+                <td>{metric['name']}</td>
+                <td class="metric">{metric['value']:.6f}</td>
             </tr>
         </table>
         

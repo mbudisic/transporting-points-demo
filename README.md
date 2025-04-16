@@ -23,7 +23,7 @@ This application allows users to:
 - **Real-time Visualization**: See immediate updates to distances and transport plans as distributions change
 - **Distance Matrices**: View detailed distance matrices showing pairwise blob distances
 - **Multiple Distance Metrics**: Compare different ways of measuring distribution distances
-- **Import/Export**: Save and load distribution configurations for reproducibility
+- **Import/Export**: Save and load distribution configurations for reproducibility, and export focused reports containing only the selected transport plan
 
 ## Documentation
 
