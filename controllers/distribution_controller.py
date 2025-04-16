@@ -26,14 +26,20 @@ class DistributionController:
         Returns:
             The newly created Blob
         """
+        import random
+        
         # Ensure valid values (but allow x and y to be None for random positioning)
         if x is not None:
-            x = max(0.0, min(10.0, float(x)))
+            # Add small random variation (±0.5) to specified position
+            x = max(0.0, min(10.0, float(x) + random.uniform(-0.5, 0.5)))
         if y is not None:
-            y = max(0.0, min(10.0, float(y)))
+            # Add small random variation (±0.5) to specified position
+            y = max(0.0, min(10.0, float(y) + random.uniform(-0.5, 0.5)))
             
         variance = max(0.1, min(5.0, float(variance)))
-        height = max(-10.0, min(10.0, float(height)))  # Allow negative heights
+        
+        # Add small random variation to the height (±0.2)
+        height = max(-10.0, min(10.0, float(height) + random.uniform(-0.2, 0.2)))
         
         # Add to the distribution (random positions will be generated if x or y is None)
         return distribution.add_blob(x, y, variance, height)

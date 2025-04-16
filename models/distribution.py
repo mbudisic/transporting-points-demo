@@ -49,16 +49,29 @@ class Distribution:
         Add a new Gaussian blob to the distribution.
         If x or y are None, random positions within the plot area (0-10) are assigned.
         """
+        import random
+        
         # Generate random positions if not specified
         if x is None:
-            import random
             x = random.uniform(1.0, 9.0)  # Avoid edges
+        else:
+            # Add small randomness to the specified position
+            x = max(0.2, min(9.8, x + random.uniform(-0.2, 0.2)))
         
         if y is None:
-            import random
             y = random.uniform(1.0, 9.0)  # Avoid edges
+        else:
+            # Add small randomness to the specified position
+            y = max(0.2, min(9.8, y + random.uniform(-0.2, 0.2)))
             
-        blob = Blob(self._next_id, x, y, variance, height)
+        # Add a small random variation to the height to create more visual variety
+        randomized_height = height + random.uniform(-0.2, 0.2)
+        # Ensure the sign doesn't change by accident due to randomization
+        if (randomized_height * height) < 0 and height != 0:
+            # If the randomization changed the sign, revert to the original height
+            randomized_height = height
+            
+        blob = Blob(self._next_id, x, y, variance, randomized_height)
         blob.add_observer(lambda _: self._notify_observers())  # Propagate changes
         self._blobs.append(blob)
         self._next_id += 1
