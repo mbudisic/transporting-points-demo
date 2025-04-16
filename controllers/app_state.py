@@ -101,6 +101,13 @@ class AppState:
             
         if 'selected_element' not in st.session_state:
             st.session_state.selected_element = None
+            
+        # Contour plot visibility settings
+        if 'show_contour_a' not in st.session_state:
+            st.session_state.show_contour_a = False
+            
+        if 'show_contour_b' not in st.session_state:
+            st.session_state.show_contour_b = False
     
     @staticmethod
     def get_distribution_a() -> Distribution:
@@ -243,3 +250,23 @@ class AppState:
         """Set the visualization mode (standard or graph)"""
         if mode in ['standard', 'graph']:
             st.session_state.visualization_mode = mode
+    
+    @staticmethod
+    def is_showing_contour_a() -> bool:
+        """Check if contour plot for distribution A is being shown"""
+        return st.session_state.show_contour_a
+    
+    @staticmethod
+    def is_showing_contour_b() -> bool:
+        """Check if contour plot for distribution B is being shown"""
+        return st.session_state.show_contour_b
+    
+    @staticmethod
+    def toggle_contour_a():
+        """Toggle visibility of contour plot for distribution A"""
+        st.session_state.show_contour_a = not st.session_state.show_contour_a
+    
+    @staticmethod
+    def toggle_contour_b():
+        """Toggle visibility of contour plot for distribution B"""
+        st.session_state.show_contour_b = not st.session_state.show_contour_b
