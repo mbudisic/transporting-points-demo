@@ -35,12 +35,12 @@ class Distribution:
     
     @property
     def positive_centers(self) -> List[Tuple[float, float]]:
-        """Get a list of centers with positive sign"""
+        """Get a list of centers with positive height"""
         return [blob.center for blob in self._blobs if blob.height > 0]
     
     @property
     def negative_centers(self) -> List[Tuple[float, float]]:
-        """Get a list of centers with negative sign"""
+        """Get a list of centers with negative height"""
         return [blob.center for blob in self._blobs if blob.height < 0]
     
     def add_blob(self, x: float = None, y: float = None, variance: float = 0.5, 
