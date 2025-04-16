@@ -126,6 +126,22 @@ class VisualizationService:
                                       "sign: %{customdata[3]}<extra></extra>"
                     ))
                     
+                    # Add sign symbol (+/-) in the center of the blob
+                    fig.add_trace(go.Scatter(
+                        x=[blob.x],
+                        y=[blob.y],
+                        mode='text',
+                        text=[sign_symbol],
+                        textfont=dict(
+                            color='rgba(255, 255, 255, 1)',  # White
+                            size=16,
+                            family='Arial Black'
+                        ),
+                        name=f"Sign A{blob.id}",
+                        hoverinfo="skip",
+                        showlegend=False
+                    ))
+                    
                     # Add a circle to represent variance
                     theta = np.linspace(0, 2*np.pi, 100)
                     radius = np.sqrt(2 * blob.variance)  # 2σ circle (captures ~95% of the distribution)
@@ -226,6 +242,22 @@ class VisualizationService:
                                       "variance: %{customdata[1]:.2f}<br>"
                                       "height: %{customdata[2]:.2f}<br>"
                                       "sign: %{customdata[3]}<extra></extra>"
+                    ))
+                    
+                    # Add sign symbol (+/-) in the center of the blob
+                    fig.add_trace(go.Scatter(
+                        x=[blob.x],
+                        y=[blob.y],
+                        mode='text',
+                        text=[sign_symbol],
+                        textfont=dict(
+                            color='rgba(255, 255, 255, 1)',  # White
+                            size=16,
+                            family='Arial Black'
+                        ),
+                        name=f"Sign B{blob.id}",
+                        hoverinfo="skip",
+                        showlegend=False
                     ))
                     
                     # Add a circle to represent variance
