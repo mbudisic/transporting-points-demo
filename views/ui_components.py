@@ -583,9 +583,6 @@ class UIComponents:
             UIComponents.render_distance_matrices(
                 distribution_a, distribution_b, calculator, selected_transport
             )
-        
-        # Show import/export functionality
-        UIComponents.render_import_export(distribution_a, distribution_b, DistributionController, on_update)
     
     @staticmethod
     def render_distance_matrices(distribution_a: Distribution, distribution_b: Distribution, 
