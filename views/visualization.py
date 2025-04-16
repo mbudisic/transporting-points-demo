@@ -326,7 +326,7 @@ class VisualizationService:
                         x=x_grid,
                         y=y_grid,
                         colorscale='Teal',
-                        opacity=AppState.get_contour_opacity(),
+                        opacity=contour_opacity,  # Use the parameter passed to the function
                         showscale=False,
                         contours=dict(
                             coloring='fill',
@@ -430,7 +430,7 @@ class VisualizationService:
                         x=x_grid,
                         y=y_grid,
                         colorscale='Oranges',
-                        opacity=AppState.get_contour_opacity(),
+                        opacity=contour_opacity,  # Use the parameter passed to the function
                         showscale=False,
                         contours=dict(
                             coloring='fill',
