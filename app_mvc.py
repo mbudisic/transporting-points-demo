@@ -80,7 +80,8 @@ def main():
             update_state,
             EventHandler.handle_plot_click,
             EventHandler.handle_drag_event,
-            VisualizationService
+            VisualizationService,
+            DistanceCalculator
         )
         
         # Render metrics

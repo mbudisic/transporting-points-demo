@@ -434,7 +434,8 @@ class UIComponents:
         on_update: Callable,
         handle_plot_click: Callable,
         handle_drag_event: Callable,
-        visualization_service
+        visualization_service,
+        calculator
     ):
         """
         Render the main content area with the plot and distance metrics
@@ -446,14 +447,15 @@ class UIComponents:
             handle_plot_click: Function to handle plot click events
             handle_drag_event: Function to handle plot drag events
             visualization_service: Service for creating visualizations
+            calculator: Calculator for computing distances
         """
-        # Define transport plan options at the top level
+        # Define transport plan options at the top level with descriptions
         transport_options = [
-            {"label": "Hide Transportation Plans", "value": "hide"},
-            {"label": "Spatial Bottleneck", "value": "bottleneck_spatial"},
-            {"label": "Spatial Wasserstein", "value": "wasserstein_spatial"},
-            {"label": "Height-Based Bottleneck", "value": "bottleneck_height"},
-            {"label": "Height-Based Wasserstein", "value": "wasserstein_height"}
+            {"label": "Hide Transportation Plans", "value": "hide", "description": "No transport plan visualization"},
+            {"label": "Spatial Bottleneck", "value": "bottleneck_spatial", "description": "Largest minimum distance between points across distributions"},
+            {"label": "Spatial Wasserstein", "value": "wasserstein_spatial", "description": "Minimum cost of transforming centers based on position"},
+            {"label": "Height-Based Bottleneck", "value": "bottleneck_height", "description": "Maximum difference between sorted heights, ignoring positions"},
+            {"label": "Height-Based Wasserstein", "value": "wasserstein_height", "description": "Minimum cost of transforming heights, ignoring positions"}
         ]
         
         # Map state to option value
@@ -467,9 +469,16 @@ class UIComponents:
         elif AppState.is_showing_height_wasserstein():
             current_value = "wasserstein_height"
         
-        # Create map of labels to values for lookup
+        # Create map of labels to values and descriptions for lookup
         option_map = {opt["label"]: opt["value"] for opt in transport_options}
-        option_labels = [opt["label"] for opt in transport_options]
+        option_labels = []
+        
+        # Create formatted option labels with descriptions
+        for opt in transport_options:
+            if opt["value"] == "hide":
+                option_labels.append(opt["label"])
+            else:
+                option_labels.append(f"{opt['label']} <span style='font-size:small;color:gray'>({opt['description']})</span>")
         
         # Find the current index
         current_index = 0
@@ -478,29 +487,71 @@ class UIComponents:
                 current_index = i
                 break
         
-        # Display at the top: transport plan selection dropdown and view toggle
-        col1, col2 = st.columns([3, 1])
+        # Pre-calculate all distances to use in the side-by-side display
+        if not distribution_a.is_empty and not distribution_b.is_empty:
+            wasserstein_continuous = calculator.calculate_wasserstein_continuous(distribution_a, distribution_b)
+            wasserstein_discrete, wasserstein_pairs = calculator.calculate_wasserstein_plan(distribution_a, distribution_b)
+            bottleneck_value, bottleneck_pairs = calculator.calculate_bottleneck(distribution_a, distribution_b)
+            wasserstein_heights, height_wasserstein_pairs = calculator.calculate_height_wasserstein_plan(distribution_a, distribution_b)
+            bottleneck_heights, height_bottleneck_pairs = calculator.calculate_height_bottleneck_plan(distribution_a, distribution_b)
+            
+            # Store all transportation plans in session state for visualization
+            AppState.store_bottleneck_matching(bottleneck_pairs)
+            AppState.store_wasserstein_pairs(wasserstein_pairs)
+            AppState.store_height_wasserstein_pairs(height_wasserstein_pairs)
+            AppState.store_height_bottleneck_matching(height_bottleneck_pairs)
+        else:
+            # Default values if distributions are empty
+            bottleneck_value = wasserstein_discrete = wasserstein_continuous = 0
+            bottleneck_heights = wasserstein_heights = 0
+
+        # Display at the top: transport plan selection dropdown in a narrower column
+        # with distance value alongside
+        col1, col2 = st.columns([2, 2])
         
         with col1:
             # Display dropdown for transport plan selection
+            st.markdown("### Transportation Plan")
             transport_selection = st.selectbox(
-                "Select Transportation Plan Visualization",
+                "",  # Empty label to make it more compact
                 options=option_labels,
                 index=current_index,
-                key="transport_plan_dropdown"
+                key="transport_plan_dropdown",
+                format_func=lambda x: x.split(" <span")[0],  # Show clean label for selectbox display
+                label_visibility="collapsed"  # Hide the label completely
             )
             
             # Update visualization based on selection
-            selected_value = option_map[transport_selection]
+            selected_label = transport_selection.split(" <span")[0]  # Get clean label
+            selected_value = option_map[selected_label]
             if selected_value != current_value:
                 AppState.set_transport_visualization(selected_value)
+                # When the visualization changes, set to show both distributions
+                AppState.toggle_show_both() if not AppState.is_showing_both() else None
                 on_update()
-        
+                
+        # Display the corresponding distance value in column 2
         with col2:
-            show_both = AppState.is_showing_both()
-            if st.button("Toggle " + ("Both" if show_both else "Active Only")):
-                AppState.toggle_show_both()
-                on_update()
+            if selected_value != "hide" and not distribution_a.is_empty and not distribution_b.is_empty:
+                st.markdown("### Distance Value")
+                
+                if selected_value == "bottleneck_spatial":
+                    st.metric("", f"{bottleneck_value:.4f}")
+                elif selected_value == "wasserstein_spatial":
+                    st.metric("", f"{wasserstein_discrete:.4f}")
+                elif selected_value == "bottleneck_height":
+                    st.metric("", f"{bottleneck_heights:.4f}")
+                elif selected_value == "wasserstein_height":
+                    st.metric("", f"{wasserstein_heights:.4f}")
+            elif not distribution_a.is_empty and not distribution_b.is_empty:
+                st.markdown("### Distance Value")
+                st.metric("", "—")  # Display a dash when no plan is selected
+            else:
+                st.markdown("### Distance Value")
+                st.info("Add blobs to both distributions to calculate distances.")
+                
+        # We're removing the toggle button as requested
+        # The visualization will always show both distributions when a transportation plan is selected
         
         # Create interactive plot with all transport plan options
         fig = visualization_service.create_interactive_plot(
