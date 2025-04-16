@@ -866,28 +866,26 @@ class UIComponents:
             
             # Additional metrics with collapsible sections
             with st.expander("Show All Distance Metrics"):
-                # Display spatial metrics
+                # Display all metrics in a single table format
                 st.markdown("#### Spatial Distribution Distances")
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    st.metric("Wasserstein (Continuous)", f"{wasserstein_continuous:.4f}")
-                    
-                with col2:
-                    st.metric("Wasserstein (Centers)", f"{wasserstein_discrete:.4f}")
-                    
-                with col3:
-                    st.metric("Bottleneck Distance", f"{bottleneck_value:.4f}")
+                metrics_data = [
+                    ["Wasserstein (Continuous)", f"{wasserstein_continuous:.4f}"],
+                    ["Wasserstein (Centers)", f"{wasserstein_discrete:.4f}"],
+                    ["Bottleneck Distance", f"{bottleneck_value:.4f}"]
+                ]
+                # Create a DataFrame for display
+                metrics_df = pd.DataFrame(metrics_data, columns=["Metric", "Value"])
+                st.table(metrics_df)
                 
                 # Display height-based metrics
                 st.markdown("#### Height-Based Distances")
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.metric("Wasserstein (Heights)", f"{wasserstein_heights:.4f}")
-                    
-                with col2:
-                    st.metric("Bottleneck (Heights)", f"{bottleneck_heights:.4f}")
+                height_metrics_data = [
+                    ["Wasserstein (Heights)", f"{wasserstein_heights:.4f}"],
+                    ["Bottleneck (Heights)", f"{bottleneck_heights:.4f}"]
+                ]
+                # Create a DataFrame for display
+                height_metrics_df = pd.DataFrame(height_metrics_data, columns=["Metric", "Value"])
+                st.table(height_metrics_df)
         else:
             st.warning("Add blobs to both distributions to calculate distances.")
     
