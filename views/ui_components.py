@@ -915,7 +915,7 @@ class UIComponents:
         
         with col2:
             st.markdown("### Import Data")
-            uploaded_file = st.file_uploader("Upload a CSV file", type="csv")
+            uploaded_file = st.file_uploader("Upload a CSV file", type="csv", key="distribution_csv_uploader")
             if uploaded_file is not None:
                 if controller.import_distributions_from_csv(distribution_a, distribution_b, uploaded_file):
                     st.success("Data imported successfully.")
