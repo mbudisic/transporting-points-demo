@@ -13,19 +13,19 @@ class AppState:
         if 'distribution_a' not in st.session_state:
             # Create distribution A with default blobs (Teal color)
             distribution_a = Distribution('A', '#009E73')  # Teal color
-            # Add some default blobs
-            distribution_a.add_blob(x=3.0, y=3.0, variance=0.5, height=1.0, sign=1)
-            distribution_a.add_blob(x=7.0, y=3.0, variance=0.5, height=1.0, sign=1)
-            distribution_a.add_blob(x=5.0, y=7.0, variance=0.5, height=1.0, sign=-1)
+            # Add some default blobs (with signed heights)
+            distribution_a.add_blob(x=3.0, y=3.0, variance=0.5, height=1.0)
+            distribution_a.add_blob(x=7.0, y=3.0, variance=0.5, height=1.0)
+            distribution_a.add_blob(x=5.0, y=7.0, variance=0.5, height=-1.0)
             st.session_state.distribution_a = distribution_a
             
         if 'distribution_b' not in st.session_state:
             # Create distribution B with default blobs
             distribution_b = Distribution('B', '#E69F00')  # Orange color
-            # Add some default blobs
-            distribution_b.add_blob(x=3.0, y=7.0, variance=0.5, height=1.0, sign=1)
-            distribution_b.add_blob(x=7.0, y=7.0, variance=0.5, height=1.0, sign=1)
-            distribution_b.add_blob(x=5.0, y=3.0, variance=0.5, height=1.0, sign=-1)
+            # Add some default blobs (with signed heights)
+            distribution_b.add_blob(x=3.0, y=7.0, variance=0.5, height=1.0)
+            distribution_b.add_blob(x=7.0, y=7.0, variance=0.5, height=1.0)
+            distribution_b.add_blob(x=5.0, y=3.0, variance=0.5, height=-1.0)
             st.session_state.distribution_b = distribution_b
         
         # Initialize state variables

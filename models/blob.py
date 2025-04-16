@@ -5,13 +5,12 @@ class Blob:
     """
     Model class for a Gaussian blob in a distribution
     """
-    def __init__(self, blob_id: int, x: float, y: float, variance: float = 0.5, height: float = 1.0, sign: int = 1):
+    def __init__(self, blob_id: int, x: float, y: float, variance: float = 0.5, height: float = 1.0):
         self.id = blob_id
         self._x = float(x)
         self._y = float(y)
         self._variance = float(variance)
-        self._height = float(height)
-        self._sign = int(sign)
+        self._height = float(height)  # Height is now signed (can be positive or negative)
         self._observers = []  # For observer pattern implementation
     
     # Property getters and setters with observer notification
@@ -51,14 +50,10 @@ class Blob:
         self._height = float(value)
         self._notify_observers()
     
+    # For backwards compatibility, implemented as computed property
     @property
     def sign(self) -> int:
-        return self._sign
-    
-    @sign.setter
-    def sign(self, value: int):
-        self._sign = int(value)
-        self._notify_observers()
+        return 1 if self._height >= 0 else -1
     
     @property
     def center(self) -> Tuple[float, float]:
@@ -67,8 +62,8 @@ class Blob:
     
     @property
     def effective_weight(self) -> float:
-        """Get the effective weight (height × sign)"""
-        return self._height * self._sign
+        """Get the effective weight (just the height now, as it's already signed)"""
+        return self._height
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary representation for DataFrames"""
@@ -78,19 +73,23 @@ class Blob:
             'y': self._y,
             'variance': self._variance,
             'height': self._height,
-            'sign': self._sign
+            'sign': self.sign  # Computed property for backwards compatibility
         }
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Blob':
         """Create a Blob from a dictionary representation"""
+        # If we have old-style data with separate height and sign, combine them
+        height = data['height']
+        if 'sign' in data:
+            height = height * data['sign']
+            
         return cls(
             blob_id=data['id'],
             x=data['x'],
             y=data['y'],
             variance=data['variance'],
-            height=data['height'],
-            sign=data['sign']
+            height=height
         )
         
     def update(self, x=None, y=None, variance=None, height=None, sign=None) -> None:
@@ -109,14 +108,26 @@ class Blob:
             self._variance = float(variance)
             changed = True
             
-        if height is not None and float(height) != self._height:
-            self._height = float(height)
-            changed = True
-            
-        if sign is not None and int(sign) != self._sign:
-            self._sign = int(sign)
-            changed = True
-            
+        # Handle both height and sign updates
+        if height is not None:
+            # If sign is also provided, use it to determine the direction of height
+            if sign is not None:
+                new_height = abs(float(height)) * (1 if int(sign) > 0 else -1)
+                if new_height != self._height:
+                    self._height = new_height
+                    changed = True
+            # Otherwise just update height directly
+            elif float(height) != self._height:
+                self._height = float(height)
+                changed = True
+        # If only sign is provided, flip the height if needed
+        elif sign is not None:
+            new_sign = 1 if int(sign) > 0 else -1
+            current_sign = 1 if self._height >= 0 else -1
+            if new_sign != current_sign:
+                self._height = -self._height
+                changed = True
+                
         if changed:
             self._notify_observers()
     

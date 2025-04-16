@@ -36,17 +36,29 @@ class Distribution:
     @property
     def positive_centers(self) -> List[Tuple[float, float]]:
         """Get a list of centers with positive sign"""
-        return [blob.center for blob in self._blobs if blob.sign > 0]
+        return [blob.center for blob in self._blobs if blob.height > 0]
     
     @property
     def negative_centers(self) -> List[Tuple[float, float]]:
         """Get a list of centers with negative sign"""
-        return [blob.center for blob in self._blobs if blob.sign < 0]
+        return [blob.center for blob in self._blobs if blob.height < 0]
     
-    def add_blob(self, x: float, y: float, variance: float = 0.5, 
-                 height: float = 1.0, sign: int = 1) -> Blob:
-        """Add a new Gaussian blob to the distribution"""
-        blob = Blob(self._next_id, x, y, variance, height, sign)
+    def add_blob(self, x: float = None, y: float = None, variance: float = 0.5, 
+                 height: float = 1.0) -> Blob:
+        """
+        Add a new Gaussian blob to the distribution.
+        If x or y are None, random positions within the plot area (0-10) are assigned.
+        """
+        # Generate random positions if not specified
+        if x is None:
+            import random
+            x = random.uniform(1.0, 9.0)  # Avoid edges
+        
+        if y is None:
+            import random
+            y = random.uniform(1.0, 9.0)  # Avoid edges
+            
+        blob = Blob(self._next_id, x, y, variance, height)
         blob.add_observer(lambda _: self._notify_observers())  # Propagate changes
         self._blobs.append(blob)
         self._next_id += 1

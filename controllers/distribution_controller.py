@@ -12,36 +12,31 @@ class DistributionController:
     Controller class for manipulating distributions
     """
     @staticmethod
-    def add_blob(distribution: Distribution, x=None, y=None, variance=0.5, height=1.0, sign=1) -> Blob:
+    def add_blob(distribution: Distribution, x=None, y=None, variance=0.5, height=1.0) -> Blob:
         """
         Add a new blob to the distribution
         
         Args:
             distribution: Distribution to add the blob to
-            x: X-coordinate (defaults to center if None)
-            y: Y-coordinate (defaults to center if None)
+            x: X-coordinate (defaults to random if None)
+            y: Y-coordinate (defaults to random if None)
             variance: Variance of the Gaussian blob
-            height: Height of the blob
-            sign: Sign of the blob (+1 or -1)
+            height: Height of the blob (can be positive or negative)
             
         Returns:
             The newly created Blob
         """
-        # Default positioning in the center if not specified
-        if x is None:
-            x = 5.0
-        if y is None:
-            y = 5.0
-        
-        # Ensure valid values
-        x = max(0.0, min(10.0, float(x)))
-        y = max(0.0, min(10.0, float(y)))
+        # Ensure valid values (but allow x and y to be None for random positioning)
+        if x is not None:
+            x = max(0.0, min(10.0, float(x)))
+        if y is not None:
+            y = max(0.0, min(10.0, float(y)))
+            
         variance = max(0.1, min(5.0, float(variance)))
-        height = max(0.1, min(10.0, float(height)))
-        sign = int(sign)
+        height = max(-10.0, min(10.0, float(height)))  # Allow negative heights
         
-        # Add to the distribution
-        return distribution.add_blob(x, y, variance, height, sign)
+        # Add to the distribution (random positions will be generated if x or y is None)
+        return distribution.add_blob(x, y, variance, height)
     
     @staticmethod
     def remove_blob(distribution: Distribution, blob_id: int) -> bool:
@@ -69,8 +64,8 @@ class DistributionController:
             x: New X-coordinate (optional)
             y: New Y-coordinate (optional)
             variance: New variance (optional)
-            height: New height (optional)
-            sign: New sign (optional)
+            height: New height (optional, can be positive or negative)
+            sign: New sign (optional, only used for backwards compatibility)
             
         Returns:
             True if the blob was updated, False if the blob was not found
@@ -82,12 +77,20 @@ class DistributionController:
             y = max(0.0, min(10.0, float(y)))
         if variance is not None:
             variance = max(0.1, min(5.0, float(variance)))
-        if height is not None:
-            height = max(0.1, min(10.0, float(height)))
-        if sign is not None:
-            sign = 1 if sign > 0 else -1
             
-        # Update the blob
+        # Handle height with sign
+        if height is not None:
+            # If sign is specified, it influences the height's sign
+            if sign is not None:
+                # Apply sign to the absolute height value
+                sign_value = 1 if float(sign) > 0 else -1
+                height = abs(float(height)) * sign_value
+            
+            # Apply limits to the signed height
+            height = max(-10.0, min(10.0, float(height)))
+        # If only sign is specified, we'll flip the height's sign in the Blob model
+            
+        # Update the blob with the new values
         return distribution.update_blob(blob_id, x, y, variance, height, sign)
     
     @staticmethod
@@ -160,20 +163,22 @@ class DistributionController:
             # Process data by distribution
             for _, row in csv_data.iterrows():
                 if row['distribution'] == 'A':
+                    # Calculate signed height from old-style data
+                    signed_height = float(row['height']) * int(row['sign'])
                     new_dist_a.add_blob(
                         x=float(row['x']),
                         y=float(row['y']),
                         variance=float(row['variance']),
-                        height=float(row['height']),
-                        sign=int(row['sign'])
+                        height=signed_height
                     )
                 elif row['distribution'] == 'B':
+                    # Calculate signed height from old-style data
+                    signed_height = float(row['height']) * int(row['sign'])
                     new_dist_b.add_blob(
                         x=float(row['x']),
                         y=float(row['y']),
                         variance=float(row['variance']),
-                        height=float(row['height']),
-                        sign=int(row['sign'])
+                        height=signed_height
                     )
             
             # Replace existing distributions in session state

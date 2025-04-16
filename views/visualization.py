@@ -51,43 +51,7 @@ class VisualizationService:
             
             # Show distribution A if it's active or if showing both
             if active_distribution == 'A' or show_both:
-                # Add contour plot for distribution A - Teal (#009E73)
-                fig.add_trace(go.Contour(
-                    z=dist_a_grid,
-                    x=x_grid,
-                    y=y_grid,
-                    colorscale=[[0, 'rgba(0,158,115,0)'],  # Transparent for negative values
-                               [0.5, 'rgba(0,158,115,0.5)'],  # Light teal for low positive values
-                               [1, 'rgba(0,158,115,0.7)']],  # Teal for high positive values
-                    showscale=False,
-                    contours=dict(
-                        start=0,
-                        end=np.max(dist_a_grid) if np.max(dist_a_grid) > 0 else 0.1,
-                        size=(np.max(dist_a_grid) if np.max(dist_a_grid) > 0 else 0.1) / 10
-                    ),
-                    name="Distribution A (Positive)",
-                    customdata=np.ones_like(dist_a_grid),
-                    hoverinfo="skip"
-                ))
-                
-                # Add contour for negative parts
-                fig.add_trace(go.Contour(
-                    z=-dist_a_grid,
-                    x=x_grid,
-                    y=y_grid,
-                    colorscale=[[0, 'rgba(0,158,115,0)'],  # Transparent for positive values
-                               [0.5, 'rgba(0,158,115,0.3)'],  # Light teal for low negative values
-                               [1, 'rgba(0,110,80,0.5)']],  # Dark teal for high negative values
-                    showscale=False,
-                    contours=dict(
-                        start=0,
-                        end=np.max(-dist_a_grid) if np.max(-dist_a_grid) > 0 else 0.1,
-                        size=(np.max(-dist_a_grid) if np.max(-dist_a_grid) > 0 else 0.1) / 10
-                    ),
-                    name="Distribution A (Negative)",
-                    customdata=np.ones_like(dist_a_grid) * -1,
-                    hoverinfo="skip"
-                ))
+                # We've removed the contour plots in favor of just the variance circles
                 
                 # Add markers for blob centers in distribution A
                 for blob in distribution_a.blobs:
@@ -175,43 +139,7 @@ class VisualizationService:
             
             # Show distribution B if it's active or if showing both
             if active_distribution == 'B' or show_both:
-                # Add contour plot for distribution B - Orange (#E69F00)
-                fig.add_trace(go.Contour(
-                    z=dist_b_grid,
-                    x=x_grid,
-                    y=y_grid,
-                    colorscale=[[0, 'rgba(230,159,0,0)'],  # Transparent for negative values
-                               [0.5, 'rgba(230,159,0,0.5)'],  # Light orange for low positive values
-                               [1, 'rgba(230,159,0,0.7)']],  # Orange for high positive values
-                    showscale=False,
-                    contours=dict(
-                        start=0,
-                        end=np.max(dist_b_grid) if np.max(dist_b_grid) > 0 else 0.1,
-                        size=(np.max(dist_b_grid) if np.max(dist_b_grid) > 0 else 0.1) / 10
-                    ),
-                    name="Distribution B (Positive)",
-                    customdata=np.ones_like(dist_b_grid),
-                    hoverinfo="skip"
-                ))
-                
-                # Add contour for negative parts
-                fig.add_trace(go.Contour(
-                    z=-dist_b_grid,
-                    x=x_grid,
-                    y=y_grid,
-                    colorscale=[[0, 'rgba(230,159,0,0)'],  # Transparent for positive values
-                               [0.5, 'rgba(230,159,0,0.3)'],  # Light orange for low negative values
-                               [1, 'rgba(180,110,0,0.5)']],  # Dark orange for high negative values
-                    showscale=False,
-                    contours=dict(
-                        start=0,
-                        end=np.max(-dist_b_grid) if np.max(-dist_b_grid) > 0 else 0.1,
-                        size=(np.max(-dist_b_grid) if np.max(-dist_b_grid) > 0 else 0.1) / 10
-                    ),
-                    name="Distribution B (Negative)",
-                    customdata=np.ones_like(dist_b_grid) * -1,
-                    hoverinfo="skip"
-                ))
+                # We've removed the contour plots in favor of just the variance circles
                 
                 # Add markers for blob centers in distribution B
                 for blob in distribution_b.blobs:
