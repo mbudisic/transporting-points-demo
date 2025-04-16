@@ -51,14 +51,14 @@ class VisualizationService:
             
             # Show distribution A if it's active or if showing both
             if active_distribution == 'A' or show_both:
-                # Add contour plot for distribution A
+                # Add contour plot for distribution A - Teal (#009E73)
                 fig.add_trace(go.Contour(
                     z=dist_a_grid,
                     x=x_grid,
                     y=y_grid,
-                    colorscale=[[0, 'rgba(255,0,0,0)'],  # Transparent for negative values
-                               [0.5, 'rgba(255,150,150,0.7)'],  # Light red for low positive values
-                               [1, 'rgba(255,0,0,0.7)']],  # Red for high positive values
+                    colorscale=[[0, 'rgba(0,158,115,0)'],  # Transparent for negative values
+                               [0.5, 'rgba(0,158,115,0.5)'],  # Light teal for low positive values
+                               [1, 'rgba(0,158,115,0.7)']],  # Teal for high positive values
                     showscale=False,
                     contours=dict(
                         start=0,
@@ -75,9 +75,9 @@ class VisualizationService:
                     z=-dist_a_grid,
                     x=x_grid,
                     y=y_grid,
-                    colorscale=[[0, 'rgba(255,0,0,0)'],  # Transparent for positive values
-                               [0.5, 'rgba(255,100,100,0.7)'],  # Light red for low negative values
-                               [1, 'rgba(100,0,0,0.7)']],  # Dark red for high negative values
+                    colorscale=[[0, 'rgba(0,158,115,0)'],  # Transparent for positive values
+                               [0.5, 'rgba(0,158,115,0.3)'],  # Light teal for low negative values
+                               [1, 'rgba(0,110,80,0.5)']],  # Dark teal for high negative values
                     showscale=False,
                     contours=dict(
                         start=0,
@@ -91,8 +91,8 @@ class VisualizationService:
                 
                 # Add markers for blob centers in distribution A
                 for blob in distribution_a.blobs:
-                    marker_symbol = "circle" if blob.sign > 0 else "circle"
-                    marker_color = 'rgba(255, 0, 0, 0.8)' if blob.sign > 0 else 'rgba(100, 0, 0, 0.8)'
+                    marker_symbol = "circle"
+                    marker_color = 'rgba(0, 158, 115, 0.8)'  # Teal (#009E73)
                     sign_symbol = "+" if blob.sign > 0 else "-"
                     
                     fig.add_trace(go.Scatter(
@@ -133,7 +133,7 @@ class VisualizationService:
                         mode='text',
                         text=[sign_symbol],
                         textfont=dict(
-                            color='rgba(255, 255, 255, 1)',  # White
+                            color='rgba(0, 255, 0, 1)',  # Neon green
                             size=16,
                             family='Arial Black'
                         ),
@@ -142,20 +142,26 @@ class VisualizationService:
                         showlegend=False
                     ))
                     
-                    # Add a circle to represent variance
+                    # Add a circle to represent variance (66% of initial magnitude)
                     theta = np.linspace(0, 2*np.pi, 100)
-                    radius = np.sqrt(2 * blob.variance)  # 2σ circle (captures ~95% of the distribution)
+                    radius = np.sqrt(blob.variance * 0.66)  # 66% of initial magnitude
                     circle_x = blob.x + radius * np.cos(theta)
                     circle_y = blob.y + radius * np.sin(theta)
+                    
+                    # Line width based on height (1-4 pixels)
+                    line_width = 1 + 3 * min(abs(blob.height), 1.0)
+                    
+                    # Dash type based on sign (dashed for positive, dotted for negative)
+                    dash_type = 'dash' if blob.sign > 0 else 'dot'
                     
                     fig.add_trace(go.Scatter(
                         x=circle_x,
                         y=circle_y,
                         mode='lines',
                         line=dict(
-                            color='rgba(255, 0, 0, 0.4)',
-                            width=2,
-                            dash='dash'
+                            color='rgba(0, 158, 115, 0.6)',  # Teal with transparency
+                            width=line_width,
+                            dash=dash_type
                         ),
                         name=f"Variance A{blob.id}",
                         hoverinfo="skip",
@@ -169,14 +175,14 @@ class VisualizationService:
             
             # Show distribution B if it's active or if showing both
             if active_distribution == 'B' or show_both:
-                # Add contour plot for distribution B
+                # Add contour plot for distribution B - Orange (#E69F00)
                 fig.add_trace(go.Contour(
                     z=dist_b_grid,
                     x=x_grid,
                     y=y_grid,
-                    colorscale=[[0, 'rgba(0,0,255,0)'],  # Transparent for negative values
-                               [0.5, 'rgba(150,150,255,0.7)'],  # Light blue for low positive values
-                               [1, 'rgba(0,0,255,0.7)']],  # Blue for high positive values
+                    colorscale=[[0, 'rgba(230,159,0,0)'],  # Transparent for negative values
+                               [0.5, 'rgba(230,159,0,0.5)'],  # Light orange for low positive values
+                               [1, 'rgba(230,159,0,0.7)']],  # Orange for high positive values
                     showscale=False,
                     contours=dict(
                         start=0,
@@ -193,9 +199,9 @@ class VisualizationService:
                     z=-dist_b_grid,
                     x=x_grid,
                     y=y_grid,
-                    colorscale=[[0, 'rgba(0,0,255,0)'],  # Transparent for positive values
-                               [0.5, 'rgba(100,100,255,0.7)'],  # Light blue for low negative values
-                               [1, 'rgba(0,0,100,0.7)']],  # Dark blue for high negative values
+                    colorscale=[[0, 'rgba(230,159,0,0)'],  # Transparent for positive values
+                               [0.5, 'rgba(230,159,0,0.3)'],  # Light orange for low negative values
+                               [1, 'rgba(180,110,0,0.5)']],  # Dark orange for high negative values
                     showscale=False,
                     contours=dict(
                         start=0,
@@ -209,8 +215,8 @@ class VisualizationService:
                 
                 # Add markers for blob centers in distribution B
                 for blob in distribution_b.blobs:
-                    marker_symbol = "circle" if blob.sign > 0 else "circle"
-                    marker_color = 'rgba(0, 0, 255, 0.8)' if blob.sign > 0 else 'rgba(0, 0, 100, 0.8)'
+                    marker_symbol = "circle"
+                    marker_color = 'rgba(230, 159, 0, 0.8)'  # Orange (#E69F00)
                     sign_symbol = "+" if blob.sign > 0 else "-"
                     
                     fig.add_trace(go.Scatter(
@@ -251,7 +257,7 @@ class VisualizationService:
                         mode='text',
                         text=[sign_symbol],
                         textfont=dict(
-                            color='rgba(255, 255, 255, 1)',  # White
+                            color='rgba(0, 255, 0, 1)',  # Neon green
                             size=16,
                             family='Arial Black'
                         ),
@@ -260,20 +266,26 @@ class VisualizationService:
                         showlegend=False
                     ))
                     
-                    # Add a circle to represent variance
+                    # Add a circle to represent variance (66% of initial magnitude)
                     theta = np.linspace(0, 2*np.pi, 100)
-                    radius = np.sqrt(2 * blob.variance)  # 2σ circle (captures ~95% of the distribution)
+                    radius = np.sqrt(blob.variance * 0.66)  # 66% of initial magnitude
                     circle_x = blob.x + radius * np.cos(theta)
                     circle_y = blob.y + radius * np.sin(theta)
+                    
+                    # Line width based on height (1-4 pixels)
+                    line_width = 1 + 3 * min(abs(blob.height), 1.0)
+                    
+                    # Dash type based on sign (dashed for positive, dotted for negative)
+                    dash_type = 'dash' if blob.sign > 0 else 'dot'
                     
                     fig.add_trace(go.Scatter(
                         x=circle_x,
                         y=circle_y,
                         mode='lines',
                         line=dict(
-                            color='rgba(0, 0, 255, 0.4)',
-                            width=2,
-                            dash='dash'
+                            color='rgba(230, 159, 0, 0.6)',  # Orange with transparency
+                            width=line_width,
+                            dash=dash_type
                         ),
                         name=f"Variance B{blob.id}",
                         hoverinfo="skip",
