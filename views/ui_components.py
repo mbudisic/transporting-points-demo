@@ -572,43 +572,66 @@ class UIComponents:
                 st.metric("Bottleneck (Heights)", f"{bottleneck_heights:.4f}")
                 st.info("Maximum difference between sorted heights, ignoring positions.")
                 
-                # Calculate Wasserstein transportation plan
+                # Calculate all transportation plans
+                # Spatial transportation plans
                 wasserstein_value, wasserstein_pairs = calculator.calculate_wasserstein_plan(distribution_a, distribution_b)
                 AppState.store_wasserstein_pairs(wasserstein_pairs)
                 
-                # Transport plan visualization with radio buttons
-                st.markdown("#### Transport Plan Visualization")
-                transport_options = ["Hide Transportation Plans", "Bottleneck Transport", "Wasserstein Transport"]
+                bottleneck_value, bottleneck_pairs = calculator.calculate_bottleneck(distribution_a, distribution_b)
+                AppState.store_bottleneck_matching(bottleneck_pairs)
                 
-                # Determine the current selection index based on current state
-                current_option = 0  # Default to "Hide"
+                # Height-based transportation plans
+                height_wasserstein_value, height_wasserstein_pairs = calculator.calculate_height_wasserstein_plan(distribution_a, distribution_b)
+                AppState.store_height_wasserstein_pairs(height_wasserstein_pairs)
+                
+                height_bottleneck_value, height_bottleneck_pairs = calculator.calculate_height_bottleneck_plan(distribution_a, distribution_b)
+                AppState.store_height_bottleneck_matching(height_bottleneck_pairs)
+                
+                # Transport plan visualization with dropdown
+                st.markdown("#### Transport Plan Visualization")
+                transport_options = [
+                    {"label": "Hide Transportation Plans", "value": "hide"},
+                    {"label": "Spatial Bottleneck", "value": "bottleneck_spatial"},
+                    {"label": "Spatial Wasserstein", "value": "wasserstein_spatial"},
+                    {"label": "Height-Based Bottleneck", "value": "bottleneck_height"},
+                    {"label": "Height-Based Wasserstein", "value": "wasserstein_height"}
+                ]
+                
+                # Map state to option value
+                current_value = "hide"  # Default
                 if AppState.is_showing_bottleneck():
-                    current_option = 1  # "Bottleneck Transport"
+                    current_value = "bottleneck_spatial"
                 elif AppState.is_showing_wasserstein():
-                    current_option = 2  # "Wasserstein Transport"
-                    
-                # Display radio buttons for transport plan selection
-                transport_selection = st.radio(
-                    "Select visualization",
-                    options=transport_options,
-                    index=current_option,
-                    horizontal=True,
-                    key="transport_plan_radio"
+                    current_value = "wasserstein_spatial"
+                elif AppState.is_showing_height_bottleneck():
+                    current_value = "bottleneck_height"
+                elif AppState.is_showing_height_wasserstein():
+                    current_value = "wasserstein_height"
+                
+                # Create map of labels to values for lookup
+                option_map = {opt["label"]: opt["value"] for opt in transport_options}
+                option_labels = [opt["label"] for opt in transport_options]
+                
+                # Find the current index
+                current_index = 0
+                for i, opt in enumerate(transport_options):
+                    if opt["value"] == current_value:
+                        current_index = i
+                        break
+                
+                # Display dropdown for transport plan selection
+                transport_selection = st.selectbox(
+                    "Select visualization type",
+                    options=option_labels,
+                    index=current_index,
+                    key="transport_plan_dropdown"
                 )
                 
                 # Update visualization based on selection
-                if transport_selection == "Hide Transportation Plans":
-                    if AppState.is_showing_bottleneck() or AppState.is_showing_wasserstein():
-                        AppState.set_transport_visualization("hide")
-                        on_update()
-                elif transport_selection == "Bottleneck Transport":
-                    if not AppState.is_showing_bottleneck() or AppState.is_showing_wasserstein():
-                        AppState.set_transport_visualization("bottleneck")
-                        on_update()
-                elif transport_selection == "Wasserstein Transport":
-                    if AppState.is_showing_bottleneck() or not AppState.is_showing_wasserstein():
-                        AppState.set_transport_visualization("wasserstein")
-                        on_update()
+                selected_value = option_map[transport_selection]
+                if selected_value != current_value:
+                    AppState.set_transport_visualization(selected_value)
+                    on_update()
         else:
             st.warning("Add blobs to both distributions to calculate distances.")
     
