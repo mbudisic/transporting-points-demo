@@ -129,10 +129,7 @@ class UIComponents:
                     with x_label:
                         st.markdown("X:")
                     with x_slider:
-                        # Set the session state value first
-                        st.session_state[f"x_slider_A{blob_id}"] = float(blob.x)
-                        
-                        # Then create the slider with that value
+                        # Create the slider with default value
                         new_x = st.slider(
                             "##", 
                             min_value=0.0, 
@@ -142,7 +139,7 @@ class UIComponents:
                             key=f"x_slider_A{blob_id}",
                             on_change=lambda: DistributionController.update_blob(
                                 distribution, blob_id, 
-                                x=st.session_state[f"x_slider_A{blob_id}"]
+                                x=st.session_state.get(f"x_slider_A{blob_id}", blob.x)
                             )
                         )
                     
@@ -152,10 +149,7 @@ class UIComponents:
                     with y_label:
                         st.markdown("Y:")
                     with y_slider:
-                        # Set the session state value first 
-                        st.session_state[f"y_slider_A{blob_id}"] = float(blob.y)
-                        
-                        # Then create the slider with that value
+                        # Create slider with default value
                         new_y = st.slider(
                             "##", 
                             min_value=0.0, 
@@ -165,7 +159,7 @@ class UIComponents:
                             key=f"y_slider_A{blob_id}",
                             on_change=lambda: DistributionController.update_blob(
                                 distribution, blob_id, 
-                                y=st.session_state[f"y_slider_A{blob_id}"]
+                                y=st.session_state.get(f"y_slider_A{blob_id}", blob.y)
                             )
                         )
                     
@@ -175,10 +169,7 @@ class UIComponents:
                     with var_label:
                         st.markdown("Var:")
                     with var_slider:
-                        # Set the session state value first
-                        st.session_state[f"var_slider_A{blob_id}"] = float(blob.variance)
-                        
-                        # Then create the slider with that value
+                        # Create slider with default value
                         new_variance = st.slider(
                             "##", 
                             min_value=0.1, 
@@ -188,7 +179,7 @@ class UIComponents:
                             key=f"var_slider_A{blob_id}",
                             on_change=lambda: DistributionController.update_blob(
                                 distribution, blob_id, 
-                                variance=st.session_state[f"var_slider_A{blob_id}"]
+                                variance=st.session_state.get(f"var_slider_A{blob_id}", blob.variance)
                             )
                         )
                     
@@ -198,9 +189,6 @@ class UIComponents:
                     with height_label:
                         st.markdown("Height:")
                     with height_slider:
-                        # Set the session state value directly with the signed height
-                        st.session_state[f"height_slider_A{blob_id}"] = float(blob.height)
-                        
                         # Create height slider that allows for negative values (double-sided)
                         new_height = st.slider(
                             "##", 
@@ -211,7 +199,7 @@ class UIComponents:
                             key=f"height_slider_A{blob_id}",
                             on_change=lambda: DistributionController.update_blob(
                                 distribution, blob_id, 
-                                height=st.session_state[f"height_slider_A{blob_id}"]
+                                height=st.session_state.get(f"height_slider_A{blob_id}", blob.height)
                             )
                         )
                 else:
