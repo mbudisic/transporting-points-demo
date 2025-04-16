@@ -18,248 +18,247 @@ class UIComponents:
             distribution: Distribution A
             on_update: Callback function to call when the distribution is updated
         """
-        with st.sidebar:
-            st.subheader("Distribution A (Red)")
+        st.subheader("Distribution A (Red)")
+        
+        # Create columns for Add/Remove buttons
+        add_col, remove_col = st.columns(2)
+        
+        # Add new blob button
+        with add_col:
+            if st.button("Add Blob to A"):
+                DistributionController.add_blob(distribution)
+                on_update()
+        
+        # Display table for distribution A
+        st.markdown("#### Distribution A Properties", help="View and edit blob properties")
+        
+        # Create DataFrame for displaying blob data
+        blob_data = distribution.get_data_dicts()
+        df = pd.DataFrame(blob_data)
+        
+        if not df.empty:
+            # Show data editor for property display and editing
+            edited_df = st.data_editor(
+                df,
+                use_container_width=True,
+                hide_index=True,
+                num_rows="fixed", 
+                disabled=["id"],
+                key="data_editor_a",
+                column_config={
+                    "id": st.column_config.NumberColumn("ID", min_value=0, format="%d"),
+                    "x": st.column_config.NumberColumn("X", min_value=0, max_value=10, format="%.2f"),
+                    "y": st.column_config.NumberColumn("Y", min_value=0, max_value=10, format="%.2f"),
+                    "variance": st.column_config.NumberColumn("Variance", min_value=0.1, max_value=5, format="%.2f"),
+                    "height": st.column_config.NumberColumn("Height", min_value=-10, max_value=10, format="%.2f"),
+                    "sign": st.column_config.SelectboxColumn("Sign", options=[1, -1])
+                }
+            )
             
-            # Create columns for Add/Remove buttons
-            add_col, remove_col = st.columns(2)
+            # Add a selectbox to choose which blob to edit
+            st.markdown("#### Select Blob", help="Choose a blob to manipulate with sliders")
             
-            # Add new blob button
-            with add_col:
-                if st.button("Add Blob to A"):
-                    DistributionController.add_blob(distribution)
-                    on_update()
+            # Create a mapping of blob IDs to display names
+            blob_id_map = {f"Blob A{blob['id']}": blob['id'] for blob in blob_data}
+            blob_options = list(blob_id_map.keys())
             
-            # Display table for distribution A
-            st.markdown("#### Distribution A Properties", help="View and edit blob properties")
-            
-            # Create DataFrame for displaying blob data
-            blob_data = distribution.get_data_dicts()
-            df = pd.DataFrame(blob_data)
-            
-            if not df.empty:
-                # Show data editor for property display and editing
-                edited_df = st.data_editor(
-                    df,
-                    use_container_width=True,
-                    hide_index=True,
-                    num_rows="fixed", 
-                    disabled=["id"],
-                    key="data_editor_a",
-                    column_config={
-                        "id": st.column_config.NumberColumn("ID", min_value=0, format="%d"),
-                        "x": st.column_config.NumberColumn("X", min_value=0, max_value=10, format="%.2f"),
-                        "y": st.column_config.NumberColumn("Y", min_value=0, max_value=10, format="%.2f"),
-                        "variance": st.column_config.NumberColumn("Variance", min_value=0.1, max_value=5, format="%.2f"),
-                        "height": st.column_config.NumberColumn("Height", min_value=-10, max_value=10, format="%.2f"),
-                        "sign": st.column_config.SelectboxColumn("Sign", options=[1, -1])
-                    }
-                )
+            if blob_options:
+                # Initialize the session state variable for selection if it doesn't exist
+                if "selected_blob_a" not in st.session_state:
+                    st.session_state.selected_blob_a = blob_options[0] if blob_options else None
                 
-                # Add a selectbox to choose which blob to edit
-                st.markdown("#### Select Blob", help="Choose a blob to manipulate with sliders")
+                # Create function to handle selection change
+                def on_blob_selection_change_a():
+                    # Get the selected blob from session state
+                    selected_blob = st.session_state.blob_selector_a
+                    if selected_blob:
+                        # Get the ID directly from our mapping
+                        selected_id = blob_id_map[selected_blob]
+                        # Update the global selected element
+                        AppState.set_selected_element('center', 'A', selected_id)
+                        # Don't call on_update() here to avoid recursive rerun
                 
-                # Create a mapping of blob IDs to display names
-                blob_id_map = {f"Blob A{blob['id']}": blob['id'] for blob in blob_data}
-                blob_options = list(blob_id_map.keys())
-                
-                if blob_options:
-                    # Initialize the session state variable for selection if it doesn't exist
-                    if "selected_blob_a" not in st.session_state:
-                        st.session_state.selected_blob_a = blob_options[0] if blob_options else None
-                    
-                    # Create function to handle selection change
-                    def on_blob_selection_change_a():
-                        # Get the selected blob from session state
-                        selected_blob = st.session_state.blob_selector_a
-                        if selected_blob:
-                            # Get the ID directly from our mapping
-                            selected_id = blob_id_map[selected_blob]
-                            # Update the global selected element
-                            AppState.set_selected_element('center', 'A', selected_id)
-                            # Don't call on_update() here to avoid recursive rerun
-                    
-                    # Find current selection index if there is one
-                    selected_element = AppState.get_selected_element()
-                    selected_index = 0
-                    
-                    # Update session state based on current app state
-                    if (selected_element is not None and selected_element['dist'] == 'A'):
-                        for i, opt in enumerate(blob_options):
-                            if f"A{selected_element['id']}" in opt:
-                                selected_index = i
-                                st.session_state.selected_blob_a = blob_options[i]
-                                break
-                    
-                    # Use the selectbox with on_change handler
-                    selected_blob = st.selectbox(
-                        "Select a blob to manipulate:",
-                        options=blob_options,
-                        index=selected_index,
-                        key="blob_selector_a",
-                        on_change=on_blob_selection_change_a
-                    )
-                
-                # Remove selected blob button
-                with remove_col:
-                    if st.button("Remove Selected Blob", key="remove_selected_a"):
-                        selected_element = AppState.get_selected_element()
-                        if selected_element and selected_element['dist'] == 'A':
-                            DistributionController.remove_blob(distribution, selected_element['id'])
-                            AppState.clear_selected_element()
-                            on_update()
-                        
-                # Add sliders for direct manipulation
-                st.markdown("### Direct Controls")
-                
-                # Get the current blob if any is selected
+                # Find current selection index if there is one
                 selected_element = AppState.get_selected_element()
-                if selected_element and selected_element['dist'] == 'A':
-                    blob_id = selected_element['id']
-                    blob = distribution.get_blob(blob_id)
-                    
-                    if blob:
-                        st.write(f"**Selected Blob: A{blob_id}** (Height: {blob.height:.2f}, Sign: {blob.sign})")
-                        
-                        # Stacked controls with labels on the left (for Distribution A)
-                        st.markdown("#### Blob Controls")
-                        
-                        # Create label and slider columns
-                        label_col, slider_col = st.columns([1, 3])
-                        
-                        # Initialize slider state keys if they don't exist
-                        slider_keys = [
-                            f"x_slider_A{blob_id}", 
-                            f"y_slider_A{blob_id}", 
-                            f"var_slider_A{blob_id}", 
-                            f"height_slider_A{blob_id}"
-                        ]
-                        for key in slider_keys:
-                            if key not in st.session_state:
-                                st.session_state[key] = 0.0  # Default will be immediately overwritten
-                        
-                        # Initialize sign selector state if it doesn't exist
-                        sign_key = f"sign_selector_A{blob_id}"
-                        if sign_key not in st.session_state:
-                            st.session_state[sign_key] = 1  # Default will be immediately overwritten
-                        
-                        # X Position
-                        with label_col:
-                            st.markdown("X Position:")
-                        with slider_col:
-                            # Set the session state value first
-                            st.session_state[f"x_slider_A{blob_id}"] = float(blob.x)
-                            
-                            # Then create the slider with that value
-                            new_x = st.slider(
-                                "##", 
-                                min_value=0.0, 
-                                max_value=10.0, 
-                                value=float(blob.x), 
-                                step=0.1, 
-                                key=f"x_slider_A{blob_id}",
-                                on_change=lambda: DistributionController.update_blob(
-                                    distribution, blob_id, 
-                                    x=st.session_state[f"x_slider_A{blob_id}"]
-                                )
-                            )
-                        
-                        # Y Position
-                        with label_col:
-                            st.markdown("Y Position:")
-                        with slider_col:
-                            # Set the session state value first
-                            st.session_state[f"y_slider_A{blob_id}"] = float(blob.y)
-                            
-                            # Then create the slider with that value
-                            new_y = st.slider(
-                                "##", 
-                                min_value=0.0, 
-                                max_value=10.0, 
-                                value=float(blob.y), 
-                                step=0.1,
-                                key=f"y_slider_A{blob_id}",
-                                on_change=lambda: DistributionController.update_blob(
-                                    distribution, blob_id, 
-                                    y=st.session_state[f"y_slider_A{blob_id}"]
-                                )
-                            )
-                        
-                        # Variance control
-                        with label_col:
-                            st.markdown("Variance:")
-                        with slider_col:
-                            # Set the session state value first
-                            st.session_state[f"var_slider_A{blob_id}"] = float(blob.variance)
-                            
-                            # Then create the slider with that value
-                            new_variance = st.slider(
-                                "##", 
-                                min_value=0.1, 
-                                max_value=5.0, 
-                                value=float(blob.variance), 
-                                step=0.1,
-                                key=f"var_slider_A{blob_id}",
-                                on_change=lambda: DistributionController.update_blob(
-                                    distribution, blob_id, 
-                                    variance=st.session_state[f"var_slider_A{blob_id}"]
-                                )
-                            )
-                        
-                        # Height control
-                        with label_col:
-                            st.markdown("Magnitude:")
-                        with slider_col:
-                            # Set the session state value first
-                            st.session_state[f"height_slider_A{blob_id}"] = float(blob.height)
-                            
-                            # Then create the slider with that value
-                            new_height = st.slider(
-                                "##", 
-                                min_value=0.1, 
-                                max_value=10.0, 
-                                value=float(blob.height), 
-                                step=0.1,
-                                key=f"height_slider_A{blob_id}",
-                                on_change=lambda: DistributionController.update_blob(
-                                    distribution, blob_id, 
-                                    height=st.session_state[f"height_slider_A{blob_id}"]
-                                )
-                            )
-                        
-                        # Sign control
-                        with label_col:
-                            st.markdown("Sign:")
-                        with slider_col:
-                            # Set the session state value first
-                            st.session_state[f"sign_selector_A{blob_id}"] = blob.sign
-                            
-                            # Then create the selector with that value
-                            new_sign = st.selectbox(
-                                "##", 
-                                options=[1, -1],
-                                index=0 if blob.sign > 0 else 1,
-                                key=f"sign_selector_A{blob_id}",
-                                on_change=lambda: DistributionController.update_blob(
-                                    distribution, blob_id, 
-                                    sign=st.session_state[f"sign_selector_A{blob_id}"]
-                                )
-                            )
-                    else:
-                        st.warning("No blob selected. Use the dropdown menu to select a blob.")
-                else:
-                    st.info("No blob selected. Use the dropdown menu to select a blob.")
-                    
-                # Update distribution based on edited dataframe
-                for index, row in edited_df.iterrows():
-                    original_row = df.iloc[index]
-                    if not pd.DataFrame([row.values], columns=row.index).equals(
-                       pd.DataFrame([original_row.values], columns=original_row.index)):
-                        DistributionController.update_blob(
-                            distribution, int(row['id']), 
-                            row['x'], row['y'], row['variance'], row['height'], row['sign']
-                        )
+                selected_index = 0
+                
+                # Update session state based on current app state
+                if (selected_element is not None and selected_element['dist'] == 'A'):
+                    for i, opt in enumerate(blob_options):
+                        if f"A{selected_element['id']}" in opt:
+                            selected_index = i
+                            st.session_state.selected_blob_a = blob_options[i]
+                            break
+                
+                # Use the selectbox with on_change handler
+                selected_blob = st.selectbox(
+                    "Select a blob to manipulate:",
+                    options=blob_options,
+                    index=selected_index,
+                    key="blob_selector_a",
+                    on_change=on_blob_selection_change_a
+                )
+            
+            # Remove selected blob button
+            with remove_col:
+                if st.button("Remove Selected Blob", key="remove_selected_a"):
+                    selected_element = AppState.get_selected_element()
+                    if selected_element and selected_element['dist'] == 'A':
+                        DistributionController.remove_blob(distribution, selected_element['id'])
+                        AppState.clear_selected_element()
                         on_update()
+                    
+            # Add sliders for direct manipulation
+            st.markdown("### Direct Controls")
+            
+            # Get the current blob if any is selected
+            selected_element = AppState.get_selected_element()
+            if selected_element and selected_element['dist'] == 'A':
+                blob_id = selected_element['id']
+                blob = distribution.get_blob(blob_id)
+                
+                if blob:
+                    st.write(f"**Selected Blob: A{blob_id}** (Height: {blob.height:.2f}, Sign: {blob.sign})")
+                    
+                    # Stacked controls with labels on the left (for Distribution A)
+                    st.markdown("#### Blob Controls")
+                    
+                    # Create label and slider columns
+                    label_col, slider_col = st.columns([1, 3])
+                    
+                    # Initialize slider state keys if they don't exist
+                    slider_keys = [
+                        f"x_slider_A{blob_id}", 
+                        f"y_slider_A{blob_id}", 
+                        f"var_slider_A{blob_id}", 
+                        f"height_slider_A{blob_id}"
+                    ]
+                    for key in slider_keys:
+                        if key not in st.session_state:
+                            st.session_state[key] = 0.0  # Default will be immediately overwritten
+                    
+                    # Initialize sign selector state if it doesn't exist
+                    sign_key = f"sign_selector_A{blob_id}"
+                    if sign_key not in st.session_state:
+                        st.session_state[sign_key] = 1  # Default will be immediately overwritten
+                    
+                    # X Position
+                    with label_col:
+                        st.markdown("X Position:")
+                    with slider_col:
+                        # Set the session state value first
+                        st.session_state[f"x_slider_A{blob_id}"] = float(blob.x)
+                        
+                        # Then create the slider with that value
+                        new_x = st.slider(
+                            "##", 
+                            min_value=0.0, 
+                            max_value=10.0, 
+                            value=float(blob.x), 
+                            step=0.1, 
+                            key=f"x_slider_A{blob_id}",
+                            on_change=lambda: DistributionController.update_blob(
+                                distribution, blob_id, 
+                                x=st.session_state[f"x_slider_A{blob_id}"]
+                            )
+                        )
+                    
+                    # Y Position
+                    with label_col:
+                        st.markdown("Y Position:")
+                    with slider_col:
+                        # Set the session state value first
+                        st.session_state[f"y_slider_A{blob_id}"] = float(blob.y)
+                        
+                        # Then create the slider with that value
+                        new_y = st.slider(
+                            "##", 
+                            min_value=0.0, 
+                            max_value=10.0, 
+                            value=float(blob.y), 
+                            step=0.1,
+                            key=f"y_slider_A{blob_id}",
+                            on_change=lambda: DistributionController.update_blob(
+                                distribution, blob_id, 
+                                y=st.session_state[f"y_slider_A{blob_id}"]
+                            )
+                        )
+                    
+                    # Variance control
+                    with label_col:
+                        st.markdown("Variance:")
+                    with slider_col:
+                        # Set the session state value first
+                        st.session_state[f"var_slider_A{blob_id}"] = float(blob.variance)
+                        
+                        # Then create the slider with that value
+                        new_variance = st.slider(
+                            "##", 
+                            min_value=0.1, 
+                            max_value=5.0, 
+                            value=float(blob.variance), 
+                            step=0.1,
+                            key=f"var_slider_A{blob_id}",
+                            on_change=lambda: DistributionController.update_blob(
+                                distribution, blob_id, 
+                                variance=st.session_state[f"var_slider_A{blob_id}"]
+                            )
+                        )
+                    
+                    # Height control
+                    with label_col:
+                        st.markdown("Magnitude:")
+                    with slider_col:
+                        # Set the session state value first
+                        st.session_state[f"height_slider_A{blob_id}"] = float(blob.height)
+                        
+                        # Then create the slider with that value
+                        new_height = st.slider(
+                            "##", 
+                            min_value=0.1, 
+                            max_value=10.0, 
+                            value=float(blob.height), 
+                            step=0.1,
+                            key=f"height_slider_A{blob_id}",
+                            on_change=lambda: DistributionController.update_blob(
+                                distribution, blob_id, 
+                                height=st.session_state[f"height_slider_A{blob_id}"]
+                            )
+                        )
+                    
+                    # Sign control
+                    with label_col:
+                        st.markdown("Sign:")
+                    with slider_col:
+                        # Set the session state value first
+                        st.session_state[f"sign_selector_A{blob_id}"] = blob.sign
+                        
+                        # Then create the selector with that value
+                        new_sign = st.selectbox(
+                            "##", 
+                            options=[1, -1],
+                            index=0 if blob.sign > 0 else 1,
+                            key=f"sign_selector_A{blob_id}",
+                            on_change=lambda: DistributionController.update_blob(
+                                distribution, blob_id, 
+                                sign=st.session_state[f"sign_selector_A{blob_id}"]
+                            )
+                        )
+                else:
+                    st.warning("No blob selected. Use the dropdown menu to select a blob.")
+            else:
+                st.info("No blob selected. Use the dropdown menu to select a blob.")
+                
+            # Update distribution based on edited dataframe
+            for index, row in edited_df.iterrows():
+                original_row = df.iloc[index]
+                if not pd.DataFrame([row.values], columns=row.index).equals(
+                   pd.DataFrame([original_row.values], columns=original_row.index)):
+                    DistributionController.update_blob(
+                        distribution, int(row['id']), 
+                        row['x'], row['y'], row['variance'], row['height'], row['sign']
+                    )
+                    on_update()
     
     @staticmethod
     def render_sidebar_b(distribution: Distribution, on_update: Callable):
@@ -270,249 +269,248 @@ class UIComponents:
             distribution: Distribution B
             on_update: Callback function to call when the distribution is updated
         """
-        with st.sidebar:
-            st.subheader("Distribution B (Blue)")
+        st.subheader("Distribution B (Blue)")
+        
+        # Create columns for Add/Remove buttons
+        add_col, remove_col = st.columns(2)
+        
+        # Add new blob button
+        with add_col:
+            if st.button("Add Blob to B"):
+                DistributionController.add_blob(distribution)
+                on_update()
+        
+        # Display table for distribution B
+        st.markdown("#### Distribution B Properties", help="View and edit blob properties")
+        
+        # Create DataFrame for displaying blob data
+        blob_data = distribution.get_data_dicts()
+        df = pd.DataFrame(blob_data)
+        
+        if not df.empty:
+            # Show data editor for property display and editing
+            edited_df = st.data_editor(
+                df,
+                use_container_width=True,
+                hide_index=True,
+                num_rows="fixed", 
+                disabled=["id"],
+                key="data_editor_b",
+                column_config={
+                    "id": st.column_config.NumberColumn("ID", min_value=0, format="%d"),
+                    "x": st.column_config.NumberColumn("X", min_value=0, max_value=10, format="%.2f"),
+                    "y": st.column_config.NumberColumn("Y", min_value=0, max_value=10, format="%.2f"),
+                    "variance": st.column_config.NumberColumn("Variance", min_value=0.1, max_value=5, format="%.2f"),
+                    "height": st.column_config.NumberColumn("Height", min_value=-10, max_value=10, format="%.2f"),
+                    "sign": st.column_config.SelectboxColumn("Sign", options=[1, -1])
+                }
+            )
             
-            # Create columns for Add/Remove buttons
-            add_col, remove_col = st.columns(2)
+            # Add a selectbox to choose which blob to edit
+            st.markdown("#### Select Blob", help="Choose a blob to manipulate with sliders")
             
-            # Add new blob button
-            with add_col:
-                if st.button("Add Blob to B"):
-                    DistributionController.add_blob(distribution)
-                    on_update()
+            # Create a mapping of blob IDs to display names
+            blob_id_map = {f"Blob B{blob['id']}": blob['id'] for blob in blob_data}
+            blob_options = list(blob_id_map.keys())
             
-            # Display table for distribution B
-            st.markdown("#### Distribution B Properties", help="View and edit blob properties")
-            
-            # Create DataFrame for displaying blob data
-            blob_data = distribution.get_data_dicts()
-            df = pd.DataFrame(blob_data)
-            
-            if not df.empty:
-                # Show data editor for property display and editing
-                edited_df = st.data_editor(
-                    df,
-                    use_container_width=True,
-                    hide_index=True,
-                    num_rows="fixed", 
-                    disabled=["id"],
-                    key="data_editor_b",
-                    column_config={
-                        "id": st.column_config.NumberColumn("ID", min_value=0, format="%d"),
-                        "x": st.column_config.NumberColumn("X", min_value=0, max_value=10, format="%.2f"),
-                        "y": st.column_config.NumberColumn("Y", min_value=0, max_value=10, format="%.2f"),
-                        "variance": st.column_config.NumberColumn("Variance", min_value=0.1, max_value=5, format="%.2f"),
-                        "height": st.column_config.NumberColumn("Height", min_value=-10, max_value=10, format="%.2f"),
-                        "sign": st.column_config.SelectboxColumn("Sign", options=[1, -1])
-                    }
-                )
+            if blob_options:
+                # Initialize the session state variable for selection if it doesn't exist
+                if "selected_blob_b" not in st.session_state:
+                    st.session_state.selected_blob_b = blob_options[0] if blob_options else None
                 
-                # Add a selectbox to choose which blob to edit
-                st.markdown("#### Select Blob", help="Choose a blob to manipulate with sliders")
+                # Create function to handle selection change
+                def on_blob_selection_change_b():
+                    # Get the selected blob from session state
+                    selected_blob = st.session_state.blob_selector_b
+                    if selected_blob:
+                        # Get the ID directly from our mapping
+                        selected_id = blob_id_map[selected_blob]
+                        # Update the global selected element
+                        AppState.set_selected_element('center', 'B', selected_id)
+                        # Don't call on_update() here to avoid recursive rerun
                 
-                # Create a mapping of blob IDs to display names
-                blob_id_map = {f"Blob B{blob['id']}": blob['id'] for blob in blob_data}
-                blob_options = list(blob_id_map.keys())
-                
-                if blob_options:
-                    # Initialize the session state variable for selection if it doesn't exist
-                    if "selected_blob_b" not in st.session_state:
-                        st.session_state.selected_blob_b = blob_options[0] if blob_options else None
-                    
-                    # Create function to handle selection change
-                    def on_blob_selection_change_b():
-                        # Get the selected blob from session state
-                        selected_blob = st.session_state.blob_selector_b
-                        if selected_blob:
-                            # Get the ID directly from our mapping
-                            selected_id = blob_id_map[selected_blob]
-                            # Update the global selected element
-                            AppState.set_selected_element('center', 'B', selected_id)
-                            # Don't call on_update() here to avoid recursive rerun
-                    
-                    # Find current selection index if there is one
-                    selected_element = AppState.get_selected_element()
-                    selected_index = 0
-                    
-                    # Update session state based on current app state
-                    if (selected_element is not None and selected_element['dist'] == 'B'):
-                        for i, opt in enumerate(blob_options):
-                            if f"B{selected_element['id']}" in opt:
-                                selected_index = i
-                                st.session_state.selected_blob_b = blob_options[i]
-                                break
-                    
-                    # Use the selectbox with on_change handler
-                    selected_blob = st.selectbox(
-                        "Select a blob to manipulate:",
-                        options=blob_options,
-                        index=selected_index,
-                        key="blob_selector_b",
-                        on_change=on_blob_selection_change_b
-                    )
-                
-                # Remove selected blob button
-                with remove_col:
-                    if st.button("Remove Selected Blob", key="remove_selected_b"):
-                        selected_element = AppState.get_selected_element()
-                        if selected_element and selected_element['dist'] == 'B':
-                            DistributionController.remove_blob(distribution, selected_element['id'])
-                            AppState.clear_selected_element()
-                            on_update()
-                        
-                # Add sliders for direct manipulation
-                st.markdown("### Direct Controls")
-                
-                # Get the current blob if any is selected
+                # Find current selection index if there is one
                 selected_element = AppState.get_selected_element()
-                if selected_element and selected_element['dist'] == 'B':
-                    blob_id = selected_element['id']
-                    blob = distribution.get_blob(blob_id)
-                    
-                    if blob:
-                        st.write(f"**Selected Blob: B{blob_id}** (Height: {blob.height:.2f}, Sign: {blob.sign})")
-                        
-                        # Stacked controls with labels on the right (for Distribution B)
-                        st.markdown("#### Blob Controls")
-                        
-                        # Create slider and label columns (reverse order for B side)
-                        slider_col, label_col = st.columns([3, 1])
-                        
-                        # Initialize slider state keys if they don't exist
-                        slider_keys = [
-                            f"x_slider_B{blob_id}", 
-                            f"y_slider_B{blob_id}", 
-                            f"var_slider_B{blob_id}", 
-                            f"height_slider_B{blob_id}"
-                        ]
-                        for key in slider_keys:
-                            if key not in st.session_state:
-                                st.session_state[key] = 0.0  # Default will be immediately overwritten
-                        
-                        # Initialize sign selector state if it doesn't exist
-                        sign_key = f"sign_selector_B{blob_id}"
-                        if sign_key not in st.session_state:
-                            st.session_state[sign_key] = 1  # Default will be immediately overwritten
-                        
-                        # X Position
-                        with slider_col:
-                            # Set the session state value first
-                            st.session_state[f"x_slider_B{blob_id}"] = float(blob.x)
-                            
-                            # Then create the slider with that value
-                            new_x = st.slider(
-                                "##", 
-                                min_value=0.0, 
-                                max_value=10.0, 
-                                value=float(blob.x), 
-                                step=0.1, 
-                                key=f"x_slider_B{blob_id}",
-                                on_change=lambda: DistributionController.update_blob(
-                                    distribution, blob_id, 
-                                    x=st.session_state[f"x_slider_B{blob_id}"]
-                                )
-                            )
-                        with label_col:
-                            st.markdown("X Position:")
-                        
-                        # Y Position
-                        with slider_col:
-                            # Set the session state value first 
-                            st.session_state[f"y_slider_B{blob_id}"] = float(blob.y)
-                            
-                            # Then create the slider with that value
-                            new_y = st.slider(
-                                "##", 
-                                min_value=0.0, 
-                                max_value=10.0, 
-                                value=float(blob.y), 
-                                step=0.1,
-                                key=f"y_slider_B{blob_id}",
-                                on_change=lambda: DistributionController.update_blob(
-                                    distribution, blob_id, 
-                                    y=st.session_state[f"y_slider_B{blob_id}"]
-                                )
-                            )
-                        with label_col:
-                            st.markdown("Y Position:")
-                        
-                        # Variance control
-                        with slider_col:
-                            # Set the session state value first
-                            st.session_state[f"var_slider_B{blob_id}"] = float(blob.variance)
-                            
-                            # Then create the slider with that value
-                            new_variance = st.slider(
-                                "##", 
-                                min_value=0.1, 
-                                max_value=5.0, 
-                                value=float(blob.variance), 
-                                step=0.1,
-                                key=f"var_slider_B{blob_id}",
-                                on_change=lambda: DistributionController.update_blob(
-                                    distribution, blob_id, 
-                                    variance=st.session_state[f"var_slider_B{blob_id}"]
-                                )
-                            )
-                        with label_col:
-                            st.markdown("Variance:")
-                        
-                        # Height control
-                        with slider_col:
-                            # Set the session state value first
-                            st.session_state[f"height_slider_B{blob_id}"] = float(blob.height)
-                            
-                            # Then create the slider with that value
-                            new_height = st.slider(
-                                "##", 
-                                min_value=0.1, 
-                                max_value=10.0, 
-                                value=float(blob.height), 
-                                step=0.1,
-                                key=f"height_slider_B{blob_id}",
-                                on_change=lambda: DistributionController.update_blob(
-                                    distribution, blob_id, 
-                                    height=st.session_state[f"height_slider_B{blob_id}"]
-                                )
-                            )
-                        with label_col:
-                            st.markdown("Magnitude:")
-                        
-                        # Sign control
-                        with slider_col:
-                            # Set the session state value first
-                            st.session_state[f"sign_selector_B{blob_id}"] = blob.sign
-                            
-                            # Then create the selector with that value
-                            new_sign = st.selectbox(
-                                "##", 
-                                options=[1, -1],
-                                index=0 if blob.sign > 0 else 1,
-                                key=f"sign_selector_B{blob_id}",
-                                on_change=lambda: DistributionController.update_blob(
-                                    distribution, blob_id, 
-                                    sign=st.session_state[f"sign_selector_B{blob_id}"]
-                                )
-                            )
-                        with label_col:
-                            st.markdown("Sign:")
-                    else:
-                        st.warning("No blob selected. Use the dropdown menu to select a blob.")
-                else:
-                    st.info("No blob selected. Use the dropdown menu to select a blob.")
-                    
-                # Update distribution based on edited dataframe
-                for index, row in edited_df.iterrows():
-                    original_row = df.iloc[index]
-                    if not pd.DataFrame([row.values], columns=row.index).equals(
-                       pd.DataFrame([original_row.values], columns=original_row.index)):
-                        DistributionController.update_blob(
-                            distribution, int(row['id']), 
-                            row['x'], row['y'], row['variance'], row['height'], row['sign']
-                        )
+                selected_index = 0
+                
+                # Update session state based on current app state
+                if (selected_element is not None and selected_element['dist'] == 'B'):
+                    for i, opt in enumerate(blob_options):
+                        if f"B{selected_element['id']}" in opt:
+                            selected_index = i
+                            st.session_state.selected_blob_b = blob_options[i]
+                            break
+                
+                # Use the selectbox with on_change handler
+                selected_blob = st.selectbox(
+                    "Select a blob to manipulate:",
+                    options=blob_options,
+                    index=selected_index,
+                    key="blob_selector_b",
+                    on_change=on_blob_selection_change_b
+                )
+            
+            # Remove selected blob button
+            with remove_col:
+                if st.button("Remove Selected Blob", key="remove_selected_b"):
+                    selected_element = AppState.get_selected_element()
+                    if selected_element and selected_element['dist'] == 'B':
+                        DistributionController.remove_blob(distribution, selected_element['id'])
+                        AppState.clear_selected_element()
                         on_update()
-    
+                    
+            # Add sliders for direct manipulation
+            st.markdown("### Direct Controls")
+            
+            # Get the current blob if any is selected
+            selected_element = AppState.get_selected_element()
+            if selected_element and selected_element['dist'] == 'B':
+                blob_id = selected_element['id']
+                blob = distribution.get_blob(blob_id)
+                
+                if blob:
+                    st.write(f"**Selected Blob: B{blob_id}** (Height: {blob.height:.2f}, Sign: {blob.sign})")
+                    
+                    # Stacked controls with labels on the right (for Distribution B)
+                    st.markdown("#### Blob Controls")
+                    
+                    # Create slider and label columns (reverse order for B side)
+                    slider_col, label_col = st.columns([3, 1])
+                    
+                    # Initialize slider state keys if they don't exist
+                    slider_keys = [
+                        f"x_slider_B{blob_id}", 
+                        f"y_slider_B{blob_id}", 
+                        f"var_slider_B{blob_id}", 
+                        f"height_slider_B{blob_id}"
+                    ]
+                    for key in slider_keys:
+                        if key not in st.session_state:
+                            st.session_state[key] = 0.0  # Default will be immediately overwritten
+                    
+                    # Initialize sign selector state if it doesn't exist
+                    sign_key = f"sign_selector_B{blob_id}"
+                    if sign_key not in st.session_state:
+                        st.session_state[sign_key] = 1  # Default will be immediately overwritten
+                    
+                    # X Position
+                    with slider_col:
+                        # Set the session state value first
+                        st.session_state[f"x_slider_B{blob_id}"] = float(blob.x)
+                        
+                        # Then create the slider with that value
+                        new_x = st.slider(
+                            "##", 
+                            min_value=0.0, 
+                            max_value=10.0, 
+                            value=float(blob.x), 
+                            step=0.1, 
+                            key=f"x_slider_B{blob_id}",
+                            on_change=lambda: DistributionController.update_blob(
+                                distribution, blob_id, 
+                                x=st.session_state[f"x_slider_B{blob_id}"]
+                            )
+                        )
+                    with label_col:
+                        st.markdown("X Position:")
+                    
+                    # Y Position
+                    with slider_col:
+                        # Set the session state value first 
+                        st.session_state[f"y_slider_B{blob_id}"] = float(blob.y)
+                        
+                        # Then create the slider with that value
+                        new_y = st.slider(
+                            "##", 
+                            min_value=0.0, 
+                            max_value=10.0, 
+                            value=float(blob.y), 
+                            step=0.1,
+                            key=f"y_slider_B{blob_id}",
+                            on_change=lambda: DistributionController.update_blob(
+                                distribution, blob_id, 
+                                y=st.session_state[f"y_slider_B{blob_id}"]
+                            )
+                        )
+                    with label_col:
+                        st.markdown("Y Position:")
+                    
+                    # Variance control
+                    with slider_col:
+                        # Set the session state value first
+                        st.session_state[f"var_slider_B{blob_id}"] = float(blob.variance)
+                        
+                        # Then create the slider with that value
+                        new_variance = st.slider(
+                            "##", 
+                            min_value=0.1, 
+                            max_value=5.0, 
+                            value=float(blob.variance), 
+                            step=0.1,
+                            key=f"var_slider_B{blob_id}",
+                            on_change=lambda: DistributionController.update_blob(
+                                distribution, blob_id, 
+                                variance=st.session_state[f"var_slider_B{blob_id}"]
+                            )
+                        )
+                    with label_col:
+                        st.markdown("Variance:")
+                    
+                    # Height control
+                    with slider_col:
+                        # Set the session state value first
+                        st.session_state[f"height_slider_B{blob_id}"] = float(blob.height)
+                        
+                        # Then create the slider with that value
+                        new_height = st.slider(
+                            "##", 
+                            min_value=0.1, 
+                            max_value=10.0, 
+                            value=float(blob.height), 
+                            step=0.1,
+                            key=f"height_slider_B{blob_id}",
+                            on_change=lambda: DistributionController.update_blob(
+                                distribution, blob_id, 
+                                height=st.session_state[f"height_slider_B{blob_id}"]
+                            )
+                        )
+                    with label_col:
+                        st.markdown("Magnitude:")
+                    
+                    # Sign control
+                    with slider_col:
+                        # Set the session state value first
+                        st.session_state[f"sign_selector_B{blob_id}"] = blob.sign
+                        
+                        # Then create the selector with that value
+                        new_sign = st.selectbox(
+                            "##", 
+                            options=[1, -1],
+                            index=0 if blob.sign > 0 else 1,
+                            key=f"sign_selector_B{blob_id}",
+                            on_change=lambda: DistributionController.update_blob(
+                                distribution, blob_id, 
+                                sign=st.session_state[f"sign_selector_B{blob_id}"]
+                            )
+                        )
+                    with label_col:
+                        st.markdown("Sign:")
+                else:
+                    st.warning("No blob selected. Use the dropdown menu to select a blob.")
+            else:
+                st.info("No blob selected. Use the dropdown menu to select a blob.")
+                
+            # Update distribution based on edited dataframe
+            for index, row in edited_df.iterrows():
+                original_row = df.iloc[index]
+                if not pd.DataFrame([row.values], columns=row.index).equals(
+                   pd.DataFrame([original_row.values], columns=original_row.index)):
+                    DistributionController.update_blob(
+                        distribution, int(row['id']), 
+                        row['x'], row['y'], row['variance'], row['height'], row['sign']
+                    )
+                    on_update()
+
     @staticmethod
     def render_main_content(
         distribution_a: Distribution, 
@@ -590,8 +588,8 @@ class UIComponents:
             calculator: Calculator for computing distances
             on_update: Callback function for state updates
         """
-        has_a = not distribution_a.is_empty
-        has_b = not distribution_b.is_empty
+        has_a = not distribution_a.is_empty()
+        has_b = not distribution_b.is_empty()
         
         if has_a and has_b:
             # Calculate distances
@@ -676,7 +674,7 @@ class UIComponents:
         
         with col1:
             st.markdown("### Export Data")
-            if not distribution_a.is_empty or not distribution_b.is_empty:
+            if not distribution_a.is_empty() or not distribution_b.is_empty():
                 export_link = controller.export_distributions_to_csv(distribution_a, distribution_b)
                 st.markdown(export_link, unsafe_allow_html=True)
             else:
@@ -684,12 +682,10 @@ class UIComponents:
         
         with col2:
             st.markdown("### Import Data")
-            uploaded_file = st.file_uploader("Upload CSV file", type="csv")
+            uploaded_file = st.file_uploader("Upload a CSV file", type="csv")
             if uploaded_file is not None:
-                if st.button("Import"):
-                    success = controller.import_distributions_from_csv(distribution_a, distribution_b, uploaded_file)
-                    if success:
-                        st.success("Data imported successfully.")
-                        on_update()
-                    else:
-                        st.error("Failed to import data. Please check the file format.")
+                if controller.import_distributions_from_csv(distribution_a, distribution_b, uploaded_file):
+                    st.success("Data imported successfully.")
+                    on_update()
+                else:
+                    st.error("Failed to import data. Make sure the CSV file has the correct format.")

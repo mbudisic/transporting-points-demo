@@ -60,19 +60,19 @@ def main():
     # Initialize application state
     AppState.initialize()
     
-    # Create the three-column layout
-    left_col, center_col, right_col = st.columns([1, 3, 1])
-    
     # Get the distributions from app state
     distribution_a = AppState.get_distribution_a()
     distribution_b = AppState.get_distribution_b()
     
-    # Render Distribution A controls in the left sidebar
-    with left_col:
+    # Create two-column layout for the sidebars
+    left_sidebar, main_content, right_sidebar = st.columns([1, 3, 1])
+    
+    # Create left sidebar for Distribution A
+    with left_sidebar:
         UIComponents.render_sidebar_a(distribution_a, update_state)
     
     # Render the main content area
-    with center_col:
+    with main_content:
         # Render plot and controls
         UIComponents.render_main_content(
             distribution_a,
@@ -99,8 +99,8 @@ def main():
             update_state
         )
     
-    # Render Distribution B controls in the right sidebar
-    with right_col:
+    # Create right sidebar for Distribution B
+    with right_sidebar:
         UIComponents.render_sidebar_b(distribution_b, update_state)
 
 if __name__ == "__main__":
