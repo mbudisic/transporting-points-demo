@@ -2,6 +2,7 @@ import numpy as np
 from typing import List, Tuple, Dict, Optional, Callable
 from models.distribution import Distribution
 import ot
+from scipy.optimize import linear_sum_assignment
 from itertools import zip_longest
 
 class POTDistanceCalculator:
@@ -222,10 +223,10 @@ class POTDistanceCalculator:
             # Create spatial cost matrix
             cost_matrix = POTDistanceCalculator._create_cost_matrix_spatial(pos_blobs_a, pos_blobs_b)
             
-            # Use POT's linear assignment function (similar to Hungarian algorithm)
-            assignment = ot.linear_assignment(cost_matrix)
+            # Use scipy's linear_sum_assignment function (Hungarian algorithm)
+            row_ind, col_ind = linear_sum_assignment(cost_matrix)
             
-            for i, j in zip(assignment[0], assignment[1]):
+            for i, j in zip(row_ind, col_ind):
                 if i < len(pos_indices_a) and j < len(pos_indices_b):
                     orig_idx_a = pos_indices_a[i]
                     orig_idx_b = pos_indices_b[j]
