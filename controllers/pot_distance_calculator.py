@@ -559,14 +559,14 @@ class POTDistanceCalculator:
                 height_difference = abs(blob_a.height - blob_b.height)
                 
                 explanation = {
-                    "blob_a_idx": idx_a,
-                    "blob_b_idx": idx_b,
-                    "blob_a_center": blob_a.center,
-                    "blob_b_center": blob_b.center,
+                    "blob_a_id": idx_a,
+                    "blob_b_id": idx_b,
+                    "blob_a_position": blob_a.center,
+                    "blob_b_position": blob_b.center,
                     "blob_a_height": blob_a.height,
                     "blob_b_height": blob_b.height,
                     "spatial_distance": spatial_distance,
-                    "height_difference": height_difference,
+                    "height_distance": height_difference,
                     "weight": weight
                 }
                 explanations.append(explanation)
