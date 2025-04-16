@@ -687,9 +687,15 @@ class UIComponents:
                     for j, blob_b in enumerate(pos_blobs_b):
                         distance_matrix[i, j] = abs(blob_a.height - blob_b.height)
                         
-            # Create DataFrame for the table
-            col_labels = [f"B{b.id}" for b in pos_blobs_b]
-            row_labels = [f"A{b.id}" for b in pos_blobs_a]
+            # Create DataFrame for the table with appropriate labels based on transport mode
+            if current_transport_mode in ['bottleneck_spatial', 'wasserstein_spatial']:
+                # For spatial distance, include coordinates
+                col_labels = [f"B{b.id} [{b.x:.2f}, {b.y:.2f}]" for b in pos_blobs_b]
+                row_labels = [f"A{b.id} [{b.x:.2f}, {b.y:.2f}]" for b in pos_blobs_a]
+            else:
+                # For height-based distance, include height values
+                col_labels = [f"B{b.id} [{b.height:.2f}]" for b in pos_blobs_b]
+                row_labels = [f"A{b.id} [{b.height:.2f}]" for b in pos_blobs_a]
             pos_df = pd.DataFrame(distance_matrix, columns=col_labels, index=row_labels)
             
             # Format the values to 4 decimal places
@@ -768,9 +774,15 @@ class UIComponents:
                     for j, blob_b in enumerate(neg_blobs_b):
                         distance_matrix[i, j] = abs(blob_a.height - blob_b.height)
                         
-            # Create DataFrame for the table
-            col_labels = [f"B{b.id}" for b in neg_blobs_b]
-            row_labels = [f"A{b.id}" for b in neg_blobs_a]
+            # Create DataFrame for the table with appropriate labels based on transport mode
+            if current_transport_mode in ['bottleneck_spatial', 'wasserstein_spatial']:
+                # For spatial distance, include coordinates
+                col_labels = [f"B{b.id} [{b.x:.2f}, {b.y:.2f}]" for b in neg_blobs_b]
+                row_labels = [f"A{b.id} [{b.x:.2f}, {b.y:.2f}]" for b in neg_blobs_a]
+            else:
+                # For height-based distance, include height values
+                col_labels = [f"B{b.id} [{b.height:.2f}]" for b in neg_blobs_b]
+                row_labels = [f"A{b.id} [{b.height:.2f}]" for b in neg_blobs_a]
             neg_df = pd.DataFrame(distance_matrix, columns=col_labels, index=row_labels)
             
             # Format the values to 4 decimal places
