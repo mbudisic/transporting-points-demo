@@ -15,6 +15,34 @@ st.set_page_config(
     layout="wide"
 )
 
+# Add custom CSS to make heading fonts only 2 points larger than body text
+st.markdown("""
+<style>
+    /* Adjust heading sizes to be only 2pt larger than body text */
+    h1 {
+        font-size: 1.5rem !important;
+    }
+    h2 {
+        font-size: 1.4rem !important;
+    }
+    h3 {
+        font-size: 1.3rem !important;
+    }
+    h4 {
+        font-size: 1.2rem !important;
+    }
+    h5 {
+        font-size: 1.1rem !important;
+    }
+    
+    /* Make distance metric values use heading font */
+    .metric-value {
+        font-family: "Source Sans Pro", sans-serif !important;
+        font-weight: 600 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Initialize session state variables
 if 'distribution_a' not in st.session_state:
     # Create distribution A with default blobs
