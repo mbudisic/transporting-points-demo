@@ -363,9 +363,7 @@ with left_col:
                             max_value=10.0, 
                             value=float(blob['x']), 
                             step=0.1, 
-                            key=f"x_slider_A{blob_id}",
-                            on_change=lambda: update_blob('A', blob_id, 
-                                                        x=st.session_state[f"x_slider_A{blob_id}"])
+                            key=f"x_slider_A{blob_id}"
                         )
                     
                     # Y Position
@@ -378,9 +376,7 @@ with left_col:
                             max_value=10.0, 
                             value=float(blob['y']), 
                             step=0.1,
-                            key=f"y_slider_A{blob_id}",
-                            on_change=lambda: update_blob('A', blob_id, 
-                                                        y=st.session_state[f"y_slider_A{blob_id}"])
+                            key=f"y_slider_A{blob_id}"
                         )
                     
                     # Variance control
@@ -393,9 +389,7 @@ with left_col:
                             max_value=5.0, 
                             value=float(blob['variance']), 
                             step=0.1,
-                            key=f"var_slider_A{blob_id}",
-                            on_change=lambda: update_blob('A', blob_id, 
-                                                    variance=st.session_state[f"var_slider_A{blob_id}"])
+                            key=f"var_slider_A{blob_id}"
                         )
                     
                     # Height control

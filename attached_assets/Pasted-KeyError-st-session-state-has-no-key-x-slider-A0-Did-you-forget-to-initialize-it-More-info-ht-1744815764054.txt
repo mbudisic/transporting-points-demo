@@ -1,0 +1,26 @@
+KeyError: 'st.session_state has no key "x_slider_A0". Did you forget to initialize it? More info: https://docs.streamlit.io/develop/concepts/architecture/session-state#initialization'
+Traceback:
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/exec_code.py", line 121, in exec_func_with_error_handling
+    result = func()
+             ^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 591, in code_to_exec
+    self._session_state.on_script_will_rerun(
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/state/safe_session_state.py", line 68, in on_script_will_rerun
+    self._state.on_script_will_rerun(latest_widget_states)
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/state/session_state.py", line 558, in on_script_will_rerun
+    self._call_callbacks()
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/state/session_state.py", line 571, in _call_callbacks
+    self._new_widget_state.call_callback(wid)
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/state/session_state.py", line 272, in call_callback
+    callback(*args, **kwargs)
+File "/home/runner/workspace/app.py", line 368, in <lambda>
+    x=st.session_state[f"x_slider_A{blob_id}"])
+      ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/state/session_state_proxy.py", line 101, in __getitem__
+    return get_session_state()[key]
+           ~~~~~~~~~~~~~~~~~~~^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/state/safe_session_state.py", line 96, in __getitem__
+    return self._state[key]
+           ~~~~~~~~~~~^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/state/session_state.py", line 456, in __getitem__
+    raise KeyError(_missing_key_error_message(key))
