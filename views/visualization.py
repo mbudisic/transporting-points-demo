@@ -55,7 +55,11 @@ class VisualizationService:
         show_bottleneck_lines: bool = False,
         bottleneck_pairs: Optional[List[Tuple[int, int]]] = None,
         show_wasserstein_lines: bool = False,
-        wasserstein_pairs: Optional[List[Tuple[int, int, float]]] = None
+        wasserstein_pairs: Optional[List[Tuple[int, int, float]]] = None,
+        show_height_bottleneck_lines: bool = False,
+        height_bottleneck_pairs: Optional[List[Tuple[int, int]]] = None,
+        show_height_wasserstein_lines: bool = False,
+        height_wasserstein_pairs: Optional[List[Tuple[int, int, float]]] = None
     ):
         """
         Create an interactive plot that allows users to manipulate the distributions.
@@ -65,10 +69,14 @@ class VisualizationService:
             distribution_b: Distribution object for the second distribution
             active_distribution: Which distribution is being actively edited
             show_both: Whether to show both distributions or just the active one
-            show_bottleneck_lines: Whether to show the bottleneck transport lines
-            bottleneck_pairs: List of tuples (idx_a, idx_b) indicating matched blob indices for bottleneck
-            show_wasserstein_lines: Whether to show the Wasserstein transport lines
-            wasserstein_pairs: List of tuples (idx_a, idx_b, weight) indicating matched blob indices for Wasserstein
+            show_bottleneck_lines: Whether to show the spatial bottleneck transport lines
+            bottleneck_pairs: List of tuples (idx_a, idx_b) indicating matched blob indices for spatial bottleneck
+            show_wasserstein_lines: Whether to show the spatial Wasserstein transport lines
+            wasserstein_pairs: List of tuples (idx_a, idx_b, weight) indicating matched blob indices for spatial Wasserstein
+            show_height_bottleneck_lines: Whether to show the height-based bottleneck transport lines
+            height_bottleneck_pairs: List of tuples (idx_a, idx_b) indicating matched blob indices for height-based bottleneck
+            show_height_wasserstein_lines: Whether to show the height-based Wasserstein transport lines
+            height_wasserstein_pairs: List of tuples (idx_a, idx_b, weight) indicating matched blob indices for height-based Wasserstein
             
         Returns:
             Plotly figure object
@@ -313,6 +321,62 @@ class VisualizationService:
                             width=line_width
                         ),
                         name=f"Wasserstein A{idx_a}-B{idx_b}",
+                        hoverinfo="skip"
+                    ))
+                    
+        # Add height-based bottleneck transport lines if requested (using a different color/style)
+        if show_height_bottleneck_lines and height_bottleneck_pairs and not distribution_a.is_empty and not distribution_b.is_empty:
+            for pair in height_bottleneck_pairs:
+                idx_a, idx_b = pair
+                # Find the corresponding blobs
+                blob_a = distribution_a.get_blob(idx_a)
+                blob_b = distribution_b.get_blob(idx_b)
+                
+                if blob_a and blob_b:
+                    # Draw a magenta line between the centers
+                    fig.add_trace(go.Scatter(
+                        x=[blob_a.x, blob_b.x],
+                        y=[blob_a.y, blob_b.y],
+                        mode='lines',
+                        line=dict(
+                            color='rgba(200, 30, 150, 0.8)',  # Magenta
+                            width=2,
+                            dash='dash'  # Dashed line for height-based
+                        ),
+                        name=f"Height Bottleneck A{idx_a}-B{idx_b}",
+                        hoverinfo="skip"
+                    ))
+        
+        # Add height-based Wasserstein transport lines if requested (using a different color/style)
+        if show_height_wasserstein_lines and height_wasserstein_pairs and not distribution_a.is_empty and not distribution_b.is_empty:
+            # Find max weight for normalization
+            max_weight = max([w for _, _, w in height_wasserstein_pairs]) if height_wasserstein_pairs else 0.01
+            
+            for pair in height_wasserstein_pairs:
+                idx_a, idx_b, weight = pair
+                # Find the corresponding blobs
+                blob_a = distribution_a.get_blob(idx_a)
+                blob_b = distribution_b.get_blob(idx_b)
+                
+                if blob_a and blob_b:
+                    # Normalize weight for visual scaling
+                    normalized_weight = weight / max_weight
+                    
+                    # Determine line width and opacity based on weight
+                    line_width = 1 + 4 * normalized_weight
+                    line_opacity = 0.3 + 0.7 * normalized_weight
+                    
+                    # Draw a line between the centers
+                    fig.add_trace(go.Scatter(
+                        x=[blob_a.x, blob_b.x],
+                        y=[blob_a.y, blob_b.y],
+                        mode='lines',
+                        line=dict(
+                            color=f'rgba(200, 30, 150, {line_opacity})',  # Magenta
+                            width=line_width,
+                            dash='dot'  # Dotted line for height-based Wasserstein
+                        ),
+                        name=f"Height Wasserstein A{idx_a}-B{idx_b}",
                         hoverinfo="skip"
                     ))
         

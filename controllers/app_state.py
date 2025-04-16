@@ -35,17 +35,33 @@ class AppState:
         if 'show_both' not in st.session_state:
             st.session_state.show_both = True
             
+        # Spatial transport visualization flags
         if 'show_bottleneck_lines' not in st.session_state:
             st.session_state.show_bottleneck_lines = False
             
         if 'show_wasserstein_lines' not in st.session_state:
             st.session_state.show_wasserstein_lines = False
             
+        # Height-based transport visualization flags
+        if 'show_height_bottleneck_lines' not in st.session_state:
+            st.session_state.show_height_bottleneck_lines = False
+            
+        if 'show_height_wasserstein_lines' not in st.session_state:
+            st.session_state.show_height_wasserstein_lines = False
+            
+        # Spatial transport data
         if 'bottleneck_matching' not in st.session_state:
             st.session_state.bottleneck_matching = []
             
         if 'wasserstein_pairs' not in st.session_state:
             st.session_state.wasserstein_pairs = []
+            
+        # Height-based transport data
+        if 'height_bottleneck_matching' not in st.session_state:
+            st.session_state.height_bottleneck_matching = []
+            
+        if 'height_wasserstein_pairs' not in st.session_state:
+            st.session_state.height_wasserstein_pairs = []
             
         if 'selected_element' not in st.session_state:
             st.session_state.selected_element = None
@@ -113,6 +129,16 @@ class AppState:
         return st.session_state.show_wasserstein_lines
     
     @staticmethod
+    def is_showing_height_bottleneck() -> bool:
+        """Check if height-based bottleneck transport is being shown"""
+        return st.session_state.show_height_bottleneck_lines
+    
+    @staticmethod
+    def is_showing_height_wasserstein() -> bool:
+        """Check if height-based Wasserstein transport is being shown"""
+        return st.session_state.show_height_wasserstein_lines
+    
+    @staticmethod
     def store_bottleneck_matching(matching: List[Tuple[int, int]]):
         """Store bottleneck matching results"""
         st.session_state.bottleneck_matching = matching
@@ -121,6 +147,16 @@ class AppState:
     def store_wasserstein_pairs(pairs: List[Tuple[int, int, float]]):
         """Store Wasserstein transport plan results"""
         st.session_state.wasserstein_pairs = pairs
+        
+    @staticmethod
+    def store_height_bottleneck_matching(matching: List[Tuple[int, int]]):
+        """Store height-based bottleneck matching results"""
+        st.session_state.height_bottleneck_matching = matching
+    
+    @staticmethod
+    def store_height_wasserstein_pairs(pairs: List[Tuple[int, int, float]]):
+        """Store height-based Wasserstein transport plan results"""
+        st.session_state.height_wasserstein_pairs = pairs
     
     @staticmethod
     def get_bottleneck_matching():
@@ -131,6 +167,16 @@ class AppState:
     def get_wasserstein_pairs():
         """Get Wasserstein transport plan results"""
         return st.session_state.wasserstein_pairs
+        
+    @staticmethod
+    def get_height_bottleneck_matching():
+        """Get height-based bottleneck matching results"""
+        return st.session_state.height_bottleneck_matching
+    
+    @staticmethod
+    def get_height_wasserstein_pairs():
+        """Get height-based Wasserstein transport plan results"""
+        return st.session_state.height_wasserstein_pairs
     
     @staticmethod
     def set_selected_element(element_type: str, dist: str, element_id: int):

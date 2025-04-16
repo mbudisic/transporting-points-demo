@@ -3,6 +3,7 @@ from typing import List, Tuple, Dict, Optional
 from models.distribution import Distribution
 import scipy.spatial.distance as dist
 import scipy.optimize as opt
+from itertools import zip_longest
 
 class DistanceCalculator:
     """
@@ -112,6 +113,152 @@ class DistanceCalculator:
         
         # Maximum absolute difference
         return max(abs(a - b) for a, b in zip(heights_a, heights_b))
+        
+    @staticmethod
+    def calculate_height_bottleneck_plan(dist_a: Distribution, dist_b: Distribution) -> Tuple[float, List[Tuple[int, int]]]:
+        """
+        Calculate bottleneck distance and matching based only on blob heights (ignores positions).
+        
+        Args:
+            dist_a: First distribution
+            dist_b: Second distribution
+            
+        Returns:
+            A tuple containing (bottleneck_distance, matching_pairs)
+            where matching_pairs is a list of tuples (idx_a, idx_b)
+        """
+        blobs_a = dist_a.blobs
+        blobs_b = dist_b.blobs
+        
+        # Handle empty distributions
+        if not blobs_a or not blobs_b:
+            return 0.0, []
+            
+        # Create sorted lists of blob indices by absolute height (descending)
+        indices_a = list(range(len(blobs_a)))
+        indices_b = list(range(len(blobs_b)))
+        
+        indices_a.sort(key=lambda i: -abs(blobs_a[i].height))
+        indices_b.sort(key=lambda i: -abs(blobs_b[i].height))
+        
+        # Match positives with positives and negatives with negatives
+        pos_indices_a = [i for i in indices_a if blobs_a[i].height > 0]
+        neg_indices_a = [i for i in indices_a if blobs_a[i].height < 0]
+        pos_indices_b = [i for i in indices_b if blobs_b[i].height > 0]
+        neg_indices_b = [i for i in indices_b if blobs_b[i].height < 0]
+        
+        matching_pairs = []
+        max_difference = 0.0
+        
+        # Match positive to positive in order of decreasing height
+        pos_pairs = zip_longest(pos_indices_a, pos_indices_b, fillvalue=None)
+        for idx_a, idx_b in pos_pairs:
+            if idx_a is None or idx_b is None:
+                break
+            matching_pairs.append((idx_a, idx_b))
+            height_diff = abs(blobs_a[idx_a].height - blobs_b[idx_b].height)
+            max_difference = max(max_difference, height_diff)
+            
+        # Match negative to negative in order of increasing height (most negative first)
+        neg_pairs = zip_longest(neg_indices_a, neg_indices_b, fillvalue=None)
+        for idx_a, idx_b in neg_pairs:
+            if idx_a is None or idx_b is None:
+                break
+            matching_pairs.append((idx_a, idx_b))
+            height_diff = abs(blobs_a[idx_a].height - blobs_b[idx_b].height)
+            max_difference = max(max_difference, height_diff)
+            
+        return max_difference, matching_pairs
+        
+    @staticmethod
+    def calculate_height_wasserstein_plan(dist_a: Distribution, dist_b: Distribution) -> Tuple[float, List[Tuple[int, int, float]]]:
+        """
+        Calculate Wasserstein distance and transportation plan based only on blob heights (ignores positions).
+        
+        Args:
+            dist_a: First distribution
+            dist_b: Second distribution
+            
+        Returns:
+            A tuple containing (wasserstein_distance, matching_pairs)
+            where matching_pairs is a list of tuples (idx_a, idx_b, weight)
+        """
+        blobs_a = dist_a.blobs
+        blobs_b = dist_b.blobs
+        
+        # Handle empty distributions
+        if not blobs_a or not blobs_b:
+            return 0.0, []
+            
+        # Get heights and indices
+        heights_a = [(i, blob.height) for i, blob in enumerate(blobs_a)]
+        heights_b = [(i, blob.height) for i, blob in enumerate(blobs_b)]
+        
+        # Sort by absolute height (descending)
+        heights_a.sort(key=lambda x: -abs(x[1]))
+        heights_b.sort(key=lambda x: -abs(x[1]))
+        
+        # Separate positive and negative heights
+        pos_heights_a = [(i, h) for i, h in heights_a if h > 0]
+        neg_heights_a = [(i, h) for i, h in heights_a if h < 0]
+        pos_heights_b = [(i, h) for i, h in heights_b if h > 0]
+        neg_heights_b = [(i, h) for i, h in heights_b if h < 0]
+        
+        # Create the matching pairs with weights
+        pairs = []
+        total_distance = 0.0
+        
+        # Match positive heights
+        pos_idx_a = 0
+        pos_idx_b = 0
+        
+        while pos_idx_a < len(pos_heights_a) and pos_idx_b < len(pos_heights_b):
+            a_index, a_height = pos_heights_a[pos_idx_a]
+            b_index, b_height = pos_heights_b[pos_idx_b]
+            
+            if a_height <= b_height:
+                weight = a_height
+                pairs.append((a_index, b_index, weight))
+                total_distance += abs(a_height - weight)
+                pos_idx_a += 1
+                pos_heights_b[pos_idx_b] = (b_index, b_height - weight)
+                if b_height - weight <= 0:
+                    pos_idx_b += 1
+            else:
+                weight = b_height
+                pairs.append((a_index, b_index, weight))
+                total_distance += abs(b_height - weight)
+                pos_idx_b += 1
+                pos_heights_a[pos_idx_a] = (a_index, a_height - weight)
+                if a_height - weight <= 0:
+                    pos_idx_a += 1
+        
+        # Match negative heights
+        neg_idx_a = 0
+        neg_idx_b = 0
+        
+        while neg_idx_a < len(neg_heights_a) and neg_idx_b < len(neg_heights_b):
+            a_index, a_height = neg_heights_a[neg_idx_a]
+            b_index, b_height = neg_heights_b[neg_idx_b]
+            
+            if abs(a_height) <= abs(b_height):
+                weight = abs(a_height)
+                pairs.append((a_index, b_index, weight))
+                total_distance += abs(abs(a_height) - weight)
+                neg_idx_a += 1
+                neg_heights_b[neg_idx_b] = (b_index, b_height + weight)
+                if b_height + weight >= 0:
+                    neg_idx_b += 1
+            else:
+                weight = abs(b_height)
+                pairs.append((a_index, b_index, weight))
+                total_distance += abs(abs(b_height) - weight)
+                neg_idx_b += 1
+                neg_heights_a[neg_idx_a] = (a_index, a_height + weight)
+                if a_height + weight >= 0:
+                    neg_idx_a += 1
+        
+        return total_distance, pairs
     
     @staticmethod
     def calculate_wasserstein_discrete(dist_a: Distribution, dist_b: Distribution) -> float:
