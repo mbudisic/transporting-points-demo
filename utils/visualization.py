@@ -243,6 +243,33 @@ def create_distribution_plot(distribution_a, distribution_b, grid_size=100):
     
     return fig
 
+def add_blob_labels(fig, blob, dist_name):
+    """
+    Add a label near the blob center for easier identification
+    
+    Args:
+        fig: Plotly figure to add the label to
+        blob: The blob dictionary containing position and id
+        dist_name: The distribution name ('A' or 'B')
+        
+    Returns:
+        None (modifies fig in place)
+    """
+    label_offset_x = 0.3
+    label_offset_y = 0.3
+    fig.add_trace(go.Scatter(
+        x=[blob['x'] + label_offset_x],
+        y=[blob['y'] + label_offset_y],
+        mode='text',
+        text=f"{dist_name}{blob['id']}",
+        textfont=dict(
+            size=12,
+            color='darkred' if dist_name == 'A' else 'darkblue'
+        ),
+        showlegend=False,
+        hoverinfo='none'
+    ))
+
 def create_interactive_plot(distribution_a, distribution_b, active_distribution='A', show_both=True, show_transport_lines=False, matching_pairs=None):
     """
     Create an interactive plot that allows users to manipulate the distributions.
@@ -368,6 +395,9 @@ def create_interactive_plot(distribution_a, distribution_b, active_distribution=
                     hoverinfo='none',
                     customdata=[{'type': 'variance', 'dist': 'A', 'id': blob['id']}] * len(theta)
                 ))
+                
+                # Add label for the blob
+                add_blob_labels(fig, blob, 'A')
     
     # Show distribution B
     if show_both or active_distribution == 'B':
@@ -462,6 +492,9 @@ def create_interactive_plot(distribution_a, distribution_b, active_distribution=
                     hoverinfo='none',
                     customdata=[{'type': 'variance', 'dist': 'B', 'id': blob['id']}] * len(theta)
                 ))
+                
+                # Add label for the blob
+                add_blob_labels(fig, blob, 'B')
     
     # Add instructions for interaction
     fig.add_annotation(
