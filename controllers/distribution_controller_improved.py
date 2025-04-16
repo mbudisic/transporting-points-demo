@@ -169,9 +169,9 @@ class DistributionController:
             # Read the CSV file
             df = pd.read_csv(uploaded_file)
             
-            # Clear existing blobs
-            dist_a.clear_blobs()
-            dist_b.clear_blobs()
+            # Clear existing blobs (using internal state directly)
+            dist_a._blobs = []
+            dist_b._blobs = []
             
             # Process rows
             for _, row in df.iterrows():
@@ -210,49 +210,57 @@ class DistributionController:
     @staticmethod
     def export_as_document(dist_a: Distribution, 
                            dist_b: Distribution,
-                           fig: Optional[Any] = None) -> Dict[str, str]:
+                           figure: Optional[go.Figure] = None) -> Dict[str, str]:
         """
         Export distributions, metrics, and visualizations to a static document.
         
         Args:
             dist_a: Distribution A
             dist_b: Distribution B
-            fig: Optional plotly figure to include in export
+            figure: Optional Plotly figure to include in the document
             
         Returns:
-            Dictionary of HTML strings with download links for different formats
+            Dictionary with download links for different formats (HTML, JSON, CSV)
         """
+        # Check if distributions are empty
+        if len(dist_a.blobs) == 0 and len(dist_b.blobs) == 0:
+            return {
+                "html": "No data to export",
+                "json": "No data to export",
+                "csv": "No data to export"
+            }
+        
         # Store the figure in session state if provided
-        if fig is not None:
-            st.session_state.current_figure = fig
+        if figure is not None:
+            st.session_state.current_figure = figure
         
         # Create download links for all supported formats directly
-        return export_to_formats(dist_a, dist_b, fig)
+        return export_to_formats(dist_a, dist_b, figure)
         
     @staticmethod
     def generate_export_report(dist_a: Distribution, 
                               dist_b: Distribution, 
-                              visualization_service: Any,
-                              calculator: Any) -> str:
+                              figure: Optional[go.Figure] = None) -> str:
         """
         Export distributions, metrics, and visualizations to a static document.
         
         Args:
             dist_a: Distribution A
             dist_b: Distribution B
-            visualization_service: Service for creating visualizations
-            calculator: Distance calculator for metrics
+            figure: Optional Plotly figure to include in the export
             
         Returns:
             HTML string with a download link for the export file
         """
-        # Export to HTML and create download link
+        # Generate HTML report
         if 'export_html' not in st.session_state:
-            st.session_state.export_html = generate_html_report(
-                dist_a, dist_b, visualization_service, calculator)
+            st.session_state.export_html = generate_html_report(dist_a, dist_b, figure)
         
         # Get the HTML content
         html_content = st.session_state.export_html
         
-        # Create download links for all supported formats
-        return export_to_formats(html_content)
+        # Create download links for HTML format
+        html_b64 = base64.b64encode(html_content.encode()).decode()
+        download_link = f'<a href="data:text/html;base64,{html_b64}" download="distribution_report.html">Download HTML Report</a>'
+        
+        return download_link
