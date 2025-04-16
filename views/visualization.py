@@ -45,6 +45,145 @@ class VisualizationService:
             return 1 + 4 * (abs_height - min_height) / (max_height - min_height)
             
         return scale_height
+        
+    @staticmethod
+    def _add_transport_edges(
+        fig, 
+        distribution_a: Distribution, 
+        distribution_b: Distribution,
+        show_bottleneck_lines: bool = False,
+        bottleneck_pairs: Optional[List[Tuple[int, int]]] = None,
+        show_wasserstein_lines: bool = False,
+        wasserstein_pairs: Optional[List[Tuple[int, int, float]]] = None,
+        show_height_bottleneck_lines: bool = False,
+        height_bottleneck_pairs: Optional[List[Tuple[int, int]]] = None,
+        show_height_wasserstein_lines: bool = False,
+        height_wasserstein_pairs: Optional[List[Tuple[int, int, float]]] = None
+    ):
+        """
+        Add transport edges between blobs in a better way using techniques from the graph visualization.
+        
+        Args:
+            fig: The plotly figure to add edges to
+            distribution_a: Distribution A
+            distribution_b: Distribution B
+            show_bottleneck_lines: Whether to show spatial bottleneck edges
+            bottleneck_pairs: Spatial bottleneck matching pairs
+            show_wasserstein_lines: Whether to show spatial Wasserstein edges
+            wasserstein_pairs: Spatial Wasserstein transport plan
+            show_height_bottleneck_lines: Whether to show height-based bottleneck edges
+            height_bottleneck_pairs: Height-based bottleneck matching pairs
+            show_height_wasserstein_lines: Whether to show height-based Wasserstein edges
+            height_wasserstein_pairs: Height-based Wasserstein transport plan
+        """
+        # Calculate max weight for scaling (needed for Wasserstein)
+        max_weight = 0.1  # Minimum to avoid division by zero
+        
+        if show_wasserstein_lines and wasserstein_pairs:
+            for _, _, weight in wasserstein_pairs:
+                max_weight = max(max_weight, abs(weight))
+                
+        if show_height_wasserstein_lines and height_wasserstein_pairs:
+            for _, _, weight in height_wasserstein_pairs:
+                max_weight = max(max_weight, abs(weight))
+        
+        # Add bottleneck matching lines (spatial)
+        if show_bottleneck_lines and bottleneck_pairs:
+            for pair in bottleneck_pairs:
+                idx_a, idx_b = pair
+                if idx_a < len(distribution_a.blobs) and idx_b < len(distribution_b.blobs):
+                    blob_a = distribution_a.blobs[idx_a]
+                    blob_b = distribution_b.blobs[idx_b]
+                    
+                    # Use solid black lines for bottleneck
+                    fig.add_trace(go.Scatter(
+                        x=[blob_a.x, blob_b.x],
+                        y=[blob_a.y, blob_b.y],
+                        mode='lines',
+                        line=dict(
+                            width=2,
+                            color='rgba(0, 0, 0, 0.7)',
+                            dash='solid'
+                        ),
+                        name=f"Bottleneck {idx_a}-{idx_b}",
+                        hoverinfo="skip"
+                    ))
+        
+        # Add Wasserstein transport plan lines (spatial)
+        if show_wasserstein_lines and wasserstein_pairs:
+            for pair in wasserstein_pairs:
+                idx_a, idx_b, weight = pair
+                if idx_a < len(distribution_a.blobs) and idx_b < len(distribution_b.blobs):
+                    blob_a = distribution_a.blobs[idx_a]
+                    blob_b = distribution_b.blobs[idx_b]
+                    
+                    # Scale width based on normalized weight
+                    # Ensure weight is positive for line width
+                    edge_width = max(1, 5 * (abs(weight) / max_weight))
+                    
+                    # Use dotted black lines for Wasserstein
+                    fig.add_trace(go.Scatter(
+                        x=[blob_a.x, blob_b.x],
+                        y=[blob_a.y, blob_b.y],
+                        mode='lines',
+                        line=dict(
+                            width=edge_width,
+                            color='rgba(0, 0, 0, 0.7)',
+                            dash='dot'
+                        ),
+                        name=f"Wasserstein {idx_a}-{idx_b}",
+                        hoverinfo="skip"
+                    ))
+        
+        # Add height-based bottleneck matching lines
+        if show_height_bottleneck_lines and height_bottleneck_pairs:
+            for pair in height_bottleneck_pairs:
+                idx_a, idx_b = pair
+                if idx_a < len(distribution_a.blobs) and idx_b < len(distribution_b.blobs):
+                    blob_a = distribution_a.blobs[idx_a]
+                    blob_b = distribution_b.blobs[idx_b]
+                    
+                    # Use solid magenta lines for height-based bottleneck
+                    fig.add_trace(go.Scatter(
+                        x=[blob_a.x, blob_b.x],
+                        y=[blob_a.y, blob_b.y],
+                        mode='lines',
+                        line=dict(
+                            width=2,
+                            color='rgba(200, 30, 150, 0.7)',
+                            dash='solid'
+                        ),
+                        name=f"Height Bottleneck {idx_a}-{idx_b}",
+                        hoverinfo="skip"
+                    ))
+        
+        # Add height-based Wasserstein transport plan lines
+        if show_height_wasserstein_lines and height_wasserstein_pairs:
+            for pair in height_wasserstein_pairs:
+                idx_a, idx_b, weight = pair
+                if idx_a < len(distribution_a.blobs) and idx_b < len(distribution_b.blobs):
+                    blob_a = distribution_a.blobs[idx_a]
+                    blob_b = distribution_b.blobs[idx_b]
+                    
+                    # Scale width based on normalized weight
+                    # Ensure weight is positive for line width
+                    edge_width = max(1, 5 * (abs(weight) / max_weight))
+                    
+                    # Use dotted magenta lines for height-based Wasserstein
+                    fig.add_trace(go.Scatter(
+                        x=[blob_a.x, blob_b.x],
+                        y=[blob_a.y, blob_b.y],
+                        mode='lines',
+                        line=dict(
+                            width=edge_width,
+                            color='rgba(200, 30, 150, 0.7)',
+                            dash='dot'
+                        ),
+                        name=f"Height Wasserstein {idx_a}-{idx_b}",
+                        hoverinfo="skip"
+                    ))
+                    
+        return fig
     
     @staticmethod
     def create_interactive_plot(
