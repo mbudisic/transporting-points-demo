@@ -2,7 +2,6 @@ import numpy as np
 from typing import List, Tuple, Dict, Optional, Callable
 from models.distribution import Distribution
 import ot
-from scipy.optimize import linear_sum_assignment
 from itertools import zip_longest
 
 class POTDistanceCalculator:
@@ -223,30 +222,42 @@ class POTDistanceCalculator:
             # Create spatial cost matrix
             cost_matrix = POTDistanceCalculator._create_cost_matrix_spatial(pos_blobs_a, pos_blobs_b)
             
-            # Use scipy's linear_sum_assignment function (Hungarian algorithm)
-            row_ind, col_ind = linear_sum_assignment(cost_matrix)
+            # Create uniform weight vectors for bottleneck distance (equal weights)
+            a = np.ones(len(pos_blobs_a)) / len(pos_blobs_a)
+            b = np.ones(len(pos_blobs_b)) / len(pos_blobs_b)
             
-            for i, j in zip(row_ind, col_ind):
-                if i < len(pos_indices_a) and j < len(pos_indices_b):
-                    orig_idx_a = pos_indices_a[i]
-                    orig_idx_b = pos_indices_b[j]
-                    pairs.append((orig_idx_a, orig_idx_b))
-                    max_distance = max(max_distance, cost_matrix[i, j])
+            # Use POT's emd function to get the optimal assignment
+            transport_plan = ot.emd(a, b, cost_matrix)
+            
+            # Extract non-zero assignments
+            for i in range(len(pos_blobs_a)):
+                for j in range(len(pos_blobs_b)):
+                    if transport_plan[i, j] > 1e-10:  # Threshold for numerical stability
+                        orig_idx_a = pos_indices_a[i]
+                        orig_idx_b = pos_indices_b[j]
+                        pairs.append((orig_idx_a, orig_idx_b))
+                        max_distance = max(max_distance, cost_matrix[i, j])
         
         # Process negative blobs
         if neg_blobs_a and neg_blobs_b:
             # Create spatial cost matrix
             cost_matrix = POTDistanceCalculator._create_cost_matrix_spatial(neg_blobs_a, neg_blobs_b)
             
-            # Use POT's linear assignment function
-            assignment = ot.linear_assignment(cost_matrix)
+            # Create uniform weight vectors for bottleneck distance (equal weights)
+            a = np.ones(len(neg_blobs_a)) / len(neg_blobs_a)
+            b = np.ones(len(neg_blobs_b)) / len(neg_blobs_b)
             
-            for i, j in zip(assignment[0], assignment[1]):
-                if i < len(neg_indices_a) and j < len(neg_indices_b):
-                    orig_idx_a = neg_indices_a[i]
-                    orig_idx_b = neg_indices_b[j]
-                    pairs.append((orig_idx_a, orig_idx_b))
-                    max_distance = max(max_distance, cost_matrix[i, j])
+            # Use POT's emd function to get the optimal assignment
+            transport_plan = ot.emd(a, b, cost_matrix)
+            
+            # Extract non-zero assignments
+            for i in range(len(neg_blobs_a)):
+                for j in range(len(neg_blobs_b)):
+                    if transport_plan[i, j] > 1e-10:  # Threshold for numerical stability
+                        orig_idx_a = neg_indices_a[i]
+                        orig_idx_b = neg_indices_b[j]
+                        pairs.append((orig_idx_a, orig_idx_b))
+                        max_distance = max(max_distance, cost_matrix[i, j])
         
         return max_distance, pairs
     
@@ -381,30 +392,42 @@ class POTDistanceCalculator:
             # Create height cost matrix
             cost_matrix = POTDistanceCalculator._create_cost_matrix_heights(pos_blobs_a, pos_blobs_b)
             
-            # Use POT's linear assignment function
-            assignment = ot.linear_assignment(cost_matrix)
+            # Create uniform weight vectors for bottleneck distance (equal weights)
+            a = np.ones(len(pos_blobs_a)) / len(pos_blobs_a)
+            b = np.ones(len(pos_blobs_b)) / len(pos_blobs_b)
             
-            for i, j in zip(assignment[0], assignment[1]):
-                if i < len(pos_indices_a) and j < len(pos_indices_b):
-                    orig_idx_a = pos_indices_a[i]
-                    orig_idx_b = pos_indices_b[j]
-                    pairs.append((orig_idx_a, orig_idx_b))
-                    max_distance = max(max_distance, cost_matrix[i, j])
+            # Use POT's emd function to get the optimal assignment
+            transport_plan = ot.emd(a, b, cost_matrix)
+            
+            # Extract non-zero assignments
+            for i in range(len(pos_blobs_a)):
+                for j in range(len(pos_blobs_b)):
+                    if transport_plan[i, j] > 1e-10:  # Threshold for numerical stability
+                        orig_idx_a = pos_indices_a[i]
+                        orig_idx_b = pos_indices_b[j]
+                        pairs.append((orig_idx_a, orig_idx_b))
+                        max_distance = max(max_distance, cost_matrix[i, j])
         
         # Process negative blobs
         if neg_blobs_a and neg_blobs_b:
             # Create height cost matrix
             cost_matrix = POTDistanceCalculator._create_cost_matrix_heights(neg_blobs_a, neg_blobs_b)
             
-            # Use POT's linear assignment function
-            assignment = ot.linear_assignment(cost_matrix)
+            # Create uniform weight vectors for bottleneck distance (equal weights)
+            a = np.ones(len(neg_blobs_a)) / len(neg_blobs_a)
+            b = np.ones(len(neg_blobs_b)) / len(neg_blobs_b)
             
-            for i, j in zip(assignment[0], assignment[1]):
-                if i < len(neg_indices_a) and j < len(neg_indices_b):
-                    orig_idx_a = neg_indices_a[i]
-                    orig_idx_b = neg_indices_b[j]
-                    pairs.append((orig_idx_a, orig_idx_b))
-                    max_distance = max(max_distance, cost_matrix[i, j])
+            # Use POT's emd function to get the optimal assignment
+            transport_plan = ot.emd(a, b, cost_matrix)
+            
+            # Extract non-zero assignments
+            for i in range(len(neg_blobs_a)):
+                for j in range(len(neg_blobs_b)):
+                    if transport_plan[i, j] > 1e-10:  # Threshold for numerical stability
+                        orig_idx_a = neg_indices_a[i]
+                        orig_idx_b = neg_indices_b[j]
+                        pairs.append((orig_idx_a, orig_idx_b))
+                        max_distance = max(max_distance, cost_matrix[i, j])
         
         return max_distance, pairs
     
