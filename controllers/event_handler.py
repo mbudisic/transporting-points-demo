@@ -1,15 +1,15 @@
 import streamlit as st
+from typing import Dict, Any, List, Optional, Union, Tuple, Callable
 from controllers.app_state import AppState
 from models.distribution import Distribution
 from controllers.distribution_controller import DistributionController
-from typing import Dict, Any, List, Optional
 
 class EventHandler:
     """
     Controller class for handling user interaction events
     """
     @staticmethod
-    def handle_plot_click(trace, points, state):
+    def handle_plot_click(trace: Any, points: Any, state: Any) -> None:
         """
         Handle click events on the plot
         
@@ -39,7 +39,7 @@ class EventHandler:
                 st.rerun()
     
     @staticmethod
-    def handle_drag_event(trace, points, state):
+    def handle_drag_event(trace: Any, points: Any, state: Any) -> None:
         """
         This function handles drag events for blob movement
         

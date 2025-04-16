@@ -1,5 +1,5 @@
 import streamlit as st
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, Union, BinaryIO
 from models.distribution import Distribution
 from models.blob import Blob
 import pandas as pd
@@ -14,7 +14,11 @@ class DistributionController:
     Controller class for manipulating distributions
     """
     @staticmethod
-    def add_blob(distribution: Distribution, x=None, y=None, variance=0.5, height=1.0) -> Blob:
+    def add_blob(distribution: Distribution, 
+                 x: Optional[float] = None, 
+                 y: Optional[float] = None, 
+                 variance: float = 0.5, 
+                 height: float = 1.0) -> Blob:
         """
         Add a new blob to the distribution
         
@@ -61,8 +65,13 @@ class DistributionController:
         return distribution.remove_blob(blob_id)
     
     @staticmethod
-    def update_blob(distribution: Distribution, blob_id: int, 
-                    x=None, y=None, variance=None, height=None, sign=None) -> bool:
+    def update_blob(distribution: Distribution, 
+                   blob_id: int, 
+                   x: Optional[float] = None, 
+                   y: Optional[float] = None, 
+                   variance: Optional[float] = None, 
+                   height: Optional[float] = None, 
+                   sign: Optional[float] = None) -> bool:
         """
         Update properties of an existing blob
         
@@ -96,7 +105,6 @@ class DistributionController:
             
             # Apply limits to the signed height
             height = max(-10.0, min(10.0, float(height)))
-        # If only sign is specified, we'll flip the height's sign in the Blob model
             
         # Update the blob with the new values
         return distribution.update_blob(blob_id, x, y, variance, height, sign)
@@ -143,63 +151,66 @@ class DistributionController:
         return href
     
     @staticmethod
-    def import_distributions_from_csv(dist_a: Distribution, dist_b: Distribution, uploaded_file) -> bool:
+    def import_distributions_from_csv(dist_a: Distribution, 
+                                     dist_b: Distribution, 
+                                     uploaded_file: BinaryIO) -> bool:
         """
         Import distributions from a CSV file
         
         Args:
-            dist_a: Distribution A to update
-            dist_b: Distribution B to update
-            uploaded_file: Streamlit UploadedFile object
+            dist_a: Distribution A to populate
+            dist_b: Distribution B to populate
+            uploaded_file: CSV file uploaded by the user
             
         Returns:
             True if import was successful, False otherwise
         """
         try:
-            # Read CSV data
-            csv_data = pd.read_csv(uploaded_file)
+            # Read the CSV file
+            df = pd.read_csv(uploaded_file)
             
-            # Validate structure
-            required_columns = ['distribution', 'x', 'y', 'variance', 'height', 'sign']
-            if not all(col in csv_data.columns for col in required_columns):
-                return False
+            # Clear existing blobs (using internal state directly)
+            dist_a._blobs = []
+            dist_b._blobs = []
             
-            # Create new distributions
-            new_dist_a = Distribution('A', 'red')
-            new_dist_b = Distribution('B', 'blue')
+            # Process rows
+            for _, row in df.iterrows():
+                dist_name = row['distribution']
+                blob_id = int(row['id'])
+                x = float(row['x'])
+                y = float(row['y'])
+                variance = float(row['variance'])
+                
+                # Handle the height/sign columns based on what's available
+                if 'height' in row:
+                    height = float(row['height'])
+                    # Use sign to adjust height if both columns exist
+                    if 'sign' in row:
+                        sign = float(row['sign'])
+                        # Only apply sign if height doesn't already have the correct sign
+                        if (sign < 0 and height > 0) or (sign > 0 and height < 0):
+                            height = -height
+                else:
+                    # Fallback if only the legacy format is available
+                    weight = float(row['weight']) if 'weight' in row else 1.0
+                    sign = float(row['sign']) if 'sign' in row else 1.0
+                    height = weight * (1 if sign > 0 else -1)
+                
+                # Add to the appropriate distribution (preserving ID)
+                if dist_name == 'A':
+                    dist_a.add_blob(x, y, variance, height, blob_id)
+                elif dist_name == 'B':
+                    dist_b.add_blob(x, y, variance, height, blob_id)
             
-            # Process data by distribution
-            for _, row in csv_data.iterrows():
-                if row['distribution'] == 'A':
-                    # Calculate signed height from old-style data
-                    signed_height = float(row['height']) * int(row['sign'])
-                    new_dist_a.add_blob(
-                        x=float(row['x']),
-                        y=float(row['y']),
-                        variance=float(row['variance']),
-                        height=signed_height
-                    )
-                elif row['distribution'] == 'B':
-                    # Calculate signed height from old-style data
-                    signed_height = float(row['height']) * int(row['sign'])
-                    new_dist_b.add_blob(
-                        x=float(row['x']),
-                        y=float(row['y']),
-                        variance=float(row['variance']),
-                        height=signed_height
-                    )
-            
-            # Replace existing distributions in session state
-            st.session_state.distribution_a = new_dist_a
-            st.session_state.distribution_b = new_dist_b
             return True
-            
         except Exception as e:
-            st.error(f"Error importing data: {str(e)}")
+            st.error(f"Error importing distributions: {str(e)}")
             return False
     
     @staticmethod
-    def export_as_document(dist_a: Distribution, dist_b: Distribution, figure: go.Figure = None) -> Dict[str, str]:
+    def export_as_document(dist_a: Distribution, 
+                           dist_b: Distribution,
+                           figure: Optional[go.Figure] = None) -> Dict[str, str]:
         """
         Export distributions, metrics, and visualizations to a static document.
         
@@ -211,13 +222,45 @@ class DistributionController:
         Returns:
             Dictionary with download links for different formats (HTML, JSON, CSV)
         """
-        if dist_a.is_empty and dist_b.is_empty:
+        # Check if distributions are empty
+        if len(dist_a.blobs) == 0 and len(dist_b.blobs) == 0:
             return {
                 "html": "No data to export",
                 "json": "No data to export",
                 "csv": "No data to export"
             }
         
-        # Use the export_utils functions to create download links
-        download_links = export_to_formats(dist_a, dist_b, figure)
-        return download_links
+        # Store the figure in session state if provided
+        if figure is not None:
+            st.session_state.current_figure = figure
+        
+        # Create download links for all supported formats directly
+        return export_to_formats(dist_a, dist_b, figure)
+        
+    @staticmethod
+    def generate_export_report(dist_a: Distribution, 
+                              dist_b: Distribution, 
+                              figure: Optional[go.Figure] = None) -> str:
+        """
+        Export distributions, metrics, and visualizations to a static document.
+        
+        Args:
+            dist_a: Distribution A
+            dist_b: Distribution B
+            figure: Optional Plotly figure to include in the export
+            
+        Returns:
+            HTML string with a download link for the export file
+        """
+        # Generate HTML report
+        if 'export_html' not in st.session_state:
+            st.session_state.export_html = generate_html_report(dist_a, dist_b, figure)
+        
+        # Get the HTML content
+        html_content = st.session_state.export_html
+        
+        # Create download links for HTML format
+        html_b64 = base64.b64encode(html_content.encode()).decode()
+        download_link = f'<a href="data:text/html;base64,{html_b64}" download="distribution_report.html">Download HTML Report</a>'
+        
+        return download_link

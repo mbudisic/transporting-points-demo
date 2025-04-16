@@ -1,9 +1,9 @@
 import numpy as np
-from typing import List, Tuple, Dict, Optional, Callable
+from typing import List, Tuple, Dict, Optional, Callable, Any, Union
 from models.distribution import Distribution
+from models.blob import Blob
 import ot
 from scipy.optimize import linear_sum_assignment
-from itertools import zip_longest
 
 class POTDistanceCalculator:
     """
@@ -50,15 +50,33 @@ class POTDistanceCalculator:
     # ---------- Utility Functions ----------
     
     @staticmethod
-    def _separate_by_sign(blobs, get_value_fn: Callable = lambda b: b.height):
-        """Separate blobs by sign (positive/negative)"""
+    def _separate_by_sign(blobs: List[Blob], get_value_fn: Callable = lambda b: b.height) -> Tuple[List[Tuple[int, Blob]], List[Tuple[int, Blob]]]:
+        """
+        Separate blobs by sign (positive/negative)
+        
+        Args:
+            blobs: List of blobs to separate
+            get_value_fn: Function to extract the value to check for sign
+            
+        Returns:
+            Tuple containing (positive_blobs, negative_blobs)
+        """
         positive = [(i, b) for i, b in enumerate(blobs) if get_value_fn(b) > 0]
         negative = [(i, b) for i, b in enumerate(blobs) if get_value_fn(b) < 0]
         return positive, negative
     
     @staticmethod
-    def _create_cost_matrix_spatial(blobs_a, blobs_b):
-        """Create a spatial cost matrix between two sets of blobs"""
+    def _create_cost_matrix_spatial(blobs_a: List[Blob], blobs_b: List[Blob]) -> np.ndarray:
+        """
+        Create a spatial cost matrix between two sets of blobs
+        
+        Args:
+            blobs_a: First set of blobs
+            blobs_b: Second set of blobs
+            
+        Returns:
+            Distance matrix between all pairs of blobs
+        """
         centers_a = np.array([blob.center for blob in blobs_a])
         centers_b = np.array([blob.center for blob in blobs_b])
         
@@ -70,8 +88,17 @@ class POTDistanceCalculator:
         return ot.dist(centers_a, centers_b)
     
     @staticmethod
-    def _create_cost_matrix_heights(blobs_a, blobs_b):
-        """Create a height difference cost matrix between two sets of blobs"""
+    def _create_cost_matrix_heights(blobs_a: List[Blob], blobs_b: List[Blob]) -> np.ndarray:
+        """
+        Create a height difference cost matrix between two sets of blobs
+        
+        Args:
+            blobs_a: First set of blobs
+            blobs_b: Second set of blobs
+            
+        Returns:
+            Matrix of absolute height differences between all pairs of blobs
+        """
         if not blobs_a or not blobs_b:
             return np.array([])
             
@@ -91,8 +118,12 @@ class POTDistanceCalculator:
     # ---------- Spatial Metrics using POT ----------
     
     @staticmethod
-    def calculate_wasserstein_plan(dist_a: Distribution, dist_b: Distribution, 
-                                   metric='euclidean', p=2) -> Tuple[float, List[Tuple[int, int, float]]]:
+    def calculate_wasserstein_plan(
+        dist_a: Distribution, 
+        dist_b: Distribution, 
+        metric: str = 'euclidean', 
+        p: int = 2
+    ) -> Tuple[float, List[Tuple[int, int, float]]]:
         """
         Calculate Wasserstein distance and transportation plan using POT, respecting sign of weights.
         
@@ -125,7 +156,7 @@ class POTDistanceCalculator:
         pos_indices_b = [i for i, b in enumerate(blobs_b) if b.height > 0]
         neg_indices_b = [i for i, b in enumerate(blobs_b) if b.height < 0]
         
-        pairs = []
+        pairs: List[Tuple[int, int, float]] = []
         total_distance = 0.0
         
         # Process positive blobs
@@ -221,7 +252,7 @@ class POTDistanceCalculator:
         pos_indices_b = [i for i, b in enumerate(blobs_b) if b.height > 0]
         neg_indices_b = [i for i, b in enumerate(blobs_b) if b.height < 0]
         
-        pairs = []
+        pairs: List[Tuple[int, int]] = []
         max_distance = 0.0
         
         # Process positive blobs
@@ -234,7 +265,7 @@ class POTDistanceCalculator:
             
             # Find the maximum cost in the assignment (bottleneck distance)
             pos_bottleneck = 0.0
-            pos_matching = []
+            pos_matching: List[Tuple[int, int]] = []
             
             for i, j in zip(row_ind, col_ind):
                 if i < len(pos_indices_a) and j < len(pos_indices_b):
@@ -257,7 +288,7 @@ class POTDistanceCalculator:
             
             # Find the maximum cost in the assignment (bottleneck distance)
             neg_bottleneck = 0.0
-            neg_matching = []
+            neg_matching: List[Tuple[int, int]] = []
             
             for i, j in zip(row_ind, col_ind):
                 if i < len(neg_indices_a) and j < len(neg_indices_b):
@@ -306,7 +337,7 @@ class POTDistanceCalculator:
         pos_indices_b = [i for i, b in enumerate(blobs_b) if b.height > 0]
         neg_indices_b = [i for i, b in enumerate(blobs_b) if b.height < 0]
         
-        pairs = []
+        pairs: List[Tuple[int, int, float]] = []
         total_distance = 0.0
         
         # Process positive blobs
@@ -400,7 +431,7 @@ class POTDistanceCalculator:
         pos_indices_b = [i for i, b in enumerate(blobs_b) if b.height > 0]
         neg_indices_b = [i for i, b in enumerate(blobs_b) if b.height < 0]
         
-        pairs = []
+        pairs: List[Tuple[int, int]] = []
         max_distance = 0.0
         
         # Process positive blobs
@@ -413,7 +444,7 @@ class POTDistanceCalculator:
             
             # Find the maximum cost in the assignment (bottleneck distance)
             pos_bottleneck = 0.0
-            pos_matching = []
+            pos_matching: List[Tuple[int, int]] = []
             
             for i, j in zip(row_ind, col_ind):
                 if i < len(pos_indices_a) and j < len(pos_indices_b):
@@ -436,7 +467,7 @@ class POTDistanceCalculator:
             
             # Find the maximum cost in the assignment (bottleneck distance)
             neg_bottleneck = 0.0
-            neg_matching = []
+            neg_matching: List[Tuple[int, int]] = []
             
             for i, j in zip(row_ind, col_ind):
                 if i < len(neg_indices_a) and j < len(neg_indices_b):
@@ -454,8 +485,11 @@ class POTDistanceCalculator:
     # ---------- Helper Methods for Mathematical Validation ----------
     
     @staticmethod
-    def get_distance_matrix(dist_a: Distribution, dist_b: Distribution, 
-                           metric: str = 'spatial') -> Tuple[np.ndarray, List[int], List[int]]:
+    def get_distance_matrix(
+        dist_a: Distribution, 
+        dist_b: Distribution, 
+        metric: str = 'spatial'
+    ) -> Tuple[np.ndarray, List[int], List[int]]:
         """
         Generate a distance matrix between blobs from two distributions.
         Useful for validating the calculations manually.
@@ -487,9 +521,12 @@ class POTDistanceCalculator:
         return cost_matrix, indices_a, indices_b
     
     @staticmethod
-    def explain_matching(dist_a: Distribution, dist_b: Distribution, 
-                        matching_pairs: List[Tuple[int, int]], 
-                        weights: Optional[List[float]] = None) -> List[Dict]:
+    def explain_matching(
+        dist_a: Distribution, 
+        dist_b: Distribution, 
+        matching_pairs: List[Tuple[int, int]], 
+        weights: Optional[List[float]] = None
+    ) -> List[Dict[str, Any]]:
         """
         Create a human-readable explanation of a matching between two distributions.
         Useful for validating the calculations and understanding the results.
@@ -506,7 +543,7 @@ class POTDistanceCalculator:
         blobs_a = dist_a.blobs
         blobs_b = dist_b.blobs
         
-        explanations = []
+        explanations: List[Dict[str, Any]] = []
         
         if weights is None:
             weights = [1.0] * len(matching_pairs)
