@@ -127,20 +127,11 @@ class UIComponents:
                     label_col, slider_col = st.columns([1, 3])
                     
                     # Initialize slider state keys if they don't exist
-                    slider_keys = [
-                        f"x_slider_A{blob_id}", 
-                        f"y_slider_A{blob_id}", 
-                        f"var_slider_A{blob_id}", 
-                        f"height_slider_A{blob_id}"
-                    ]
-                    for key in slider_keys:
-                        if key not in st.session_state:
-                            st.session_state[key] = 0.0  # Default will be immediately overwritten
+                    # No need to pre-initialize sliders with default values
+                    # as we'll set specific values before creating each slider
                     
-                    # Initialize sign selector state if it doesn't exist
-                    sign_key = f"sign_selector_A{blob_id}"
-                    if sign_key not in st.session_state:
-                        st.session_state[sign_key] = 1  # Default will be immediately overwritten
+                    # No need to pre-initialize sign selector state
+                    # as we'll set the specific value before creating the selectbox
                     
                     # X Position
                     with label_col:
@@ -360,20 +351,11 @@ class UIComponents:
                     slider_col, label_col = st.columns([3, 1])
                     
                     # Initialize slider state keys if they don't exist
-                    slider_keys = [
-                        f"x_slider_B{blob_id}", 
-                        f"y_slider_B{blob_id}", 
-                        f"var_slider_B{blob_id}", 
-                        f"height_slider_B{blob_id}"
-                    ]
-                    for key in slider_keys:
-                        if key not in st.session_state:
-                            st.session_state[key] = 0.0  # Default will be immediately overwritten
+                    # No need to pre-initialize sliders with default values
+                    # as we'll set specific values before creating each slider
                     
-                    # Initialize sign selector state if it doesn't exist
-                    sign_key = f"sign_selector_B{blob_id}"
-                    if sign_key not in st.session_state:
-                        st.session_state[sign_key] = 1  # Default will be immediately overwritten
+                    # No need to pre-initialize sign selector state
+                    # as we'll set the specific value before creating the selectbox
                     
                     # X Position
                     with slider_col:
