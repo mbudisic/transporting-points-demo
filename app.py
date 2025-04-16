@@ -56,10 +56,28 @@ def remove_blob(distribution, index):
     st.rerun()
 
 def update_blob(distribution, index, x=None, y=None, variance=None, height=None, sign=None):
+    """
+    Update a blob's properties and ensure the state is properly updated to trigger visualization changes.
+    If both height and sign are specified, make sure they are consistent.
+    """
+    # If both height and sign are changing, ensure they work together correctly
+    if height is not None and sign is not None:
+        # Keep the original intention of the height (negative height should retain its sign)
+        if height < 0:
+            # If height is negative, we want sign to be 1 to preserve the negative value
+            # This is because the actual weight = height * sign
+            height = abs(height)
+            sign = -1
+    
+    # Update the distribution
     if distribution == 'A':
         st.session_state.distribution_a.update_blob(index, x, y, variance, height, sign)
     else:
         st.session_state.distribution_b.update_blob(index, x, y, variance, height, sign)
+    
+    # Force a rerun if we changed important visual properties
+    if height is not None or sign is not None:
+        st.rerun()
 
 def handle_plot_click(trace, points, state):
     """Handle click events on the plot"""
@@ -311,8 +329,8 @@ with center_col:
         show_both=st.session_state.show_both
     )
     
-    # Set the dragmode to 'dragging'
-    fig.update_layout(dragmode='dragging')
+    # Set the dragmode to 'pan' which allows for dragging elements
+    fig.update_layout(dragmode='pan')
     
     # Add event callbacks
     st.plotly_chart(
