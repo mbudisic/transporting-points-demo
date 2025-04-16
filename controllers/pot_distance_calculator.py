@@ -765,7 +765,10 @@ class POTDistanceCalculator:
                     "blob_a_height": ha,
                     "blob_b_height": hb,
                     "euclidean_distance": euclidean_dist,
-                    "height_difference": height_diff
+                    "height_difference": height_diff,
+                    "spatial_distance": euclidean_dist,  # Alias for euclidean_distance
+                    "height_distance": height_diff,      # Alias for height_difference 
+                    "weight": 1.0                        # Default weight
                 }
                 
                 # Add weight information if available
