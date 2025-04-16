@@ -336,8 +336,8 @@ def generate_html_report(dist_a: Distribution, dist_b: Distribution,
         for match in plan_data:
             html += f"""
             <tr>
-                <td>A{match['blob_a_id']} [{match['blob_a_position'][0]:.2f}, {match['blob_a_position'][1]:.2f}] (h={match['blob_a_height']:.2f})</td>
-                <td>B{match['blob_b_id']} [{match['blob_b_position'][0]:.2f}, {match['blob_b_position'][1]:.2f}] (h={match['blob_b_height']:.2f})</td>
+                <td>A{match['blob_a_index']} [{match['blob_a_pos'][0]:.2f}, {match['blob_a_pos'][1]:.2f}] (h={match['blob_a_height']:.2f})</td>
+                <td>B{match['blob_b_index']} [{match['blob_b_pos'][0]:.2f}, {match['blob_b_pos'][1]:.2f}] (h={match['blob_b_height']:.2f})</td>
                 <td>{match['spatial_distance']:.4f}</td>
                 <td>{match['height_distance']:.4f}</td>
                 <td>{match['weight']:.4f}</td>
