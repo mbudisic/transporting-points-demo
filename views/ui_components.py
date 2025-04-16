@@ -144,7 +144,7 @@ class UIComponents:
                     
                     # X Position
                     with label_col:
-                        st.markdown("X Position:")
+                        st.markdown("<span style='font-size: 14px;'>X:</span>", unsafe_allow_html=True)
                     with slider_col:
                         # Set the session state value first
                         st.session_state[f"x_slider_A{blob_id}"] = float(blob.x)
@@ -165,7 +165,7 @@ class UIComponents:
                     
                     # Y Position
                     with label_col:
-                        st.markdown("Y Position:")
+                        st.markdown("<span style='font-size: 14px;'>Y:</span>", unsafe_allow_html=True)
                     with slider_col:
                         # Set the session state value first
                         st.session_state[f"y_slider_A{blob_id}"] = float(blob.y)
@@ -186,7 +186,7 @@ class UIComponents:
                     
                     # Variance control
                     with label_col:
-                        st.markdown("Variance:")
+                        st.markdown("<span style='font-size: 14px;'>Var:</span>", unsafe_allow_html=True)
                     with slider_col:
                         # Set the session state value first
                         st.session_state[f"var_slider_A{blob_id}"] = float(blob.variance)
@@ -207,41 +207,23 @@ class UIComponents:
                     
                     # Height control
                     with label_col:
-                        st.markdown("Magnitude:")
+                        st.markdown("<span style='font-size: 14px;'>Height:</span>", unsafe_allow_html=True)
                     with slider_col:
                         # Set the session state value first
                         st.session_state[f"height_slider_A{blob_id}"] = float(blob.height)
                         
-                        # Then create the slider with that value
+                        # Create height slider that allows for negative values (double-sided)
                         new_height = st.slider(
                             "##", 
-                            min_value=0.1, 
+                            min_value=-10.0, 
                             max_value=10.0, 
                             value=float(blob.height), 
                             step=0.1,
                             key=f"height_slider_A{blob_id}",
                             on_change=lambda: DistributionController.update_blob(
                                 distribution, blob_id, 
-                                height=st.session_state[f"height_slider_A{blob_id}"]
-                            )
-                        )
-                    
-                    # Sign control
-                    with label_col:
-                        st.markdown("Sign:")
-                    with slider_col:
-                        # Set the session state value first
-                        st.session_state[f"sign_selector_A{blob_id}"] = blob.sign
-                        
-                        # Then create the selector with that value
-                        new_sign = st.selectbox(
-                            "##", 
-                            options=[1, -1],
-                            index=0 if blob.sign > 0 else 1,
-                            key=f"sign_selector_A{blob_id}",
-                            on_change=lambda: DistributionController.update_blob(
-                                distribution, blob_id, 
-                                sign=st.session_state[f"sign_selector_A{blob_id}"]
+                                height=abs(st.session_state[f"height_slider_A{blob_id}"]),
+                                sign=1 if st.session_state[f"height_slider_A{blob_id}"] >= 0 else -1
                             )
                         )
                 else:
@@ -412,7 +394,7 @@ class UIComponents:
                             )
                         )
                     with label_col:
-                        st.markdown("X Position:")
+                        st.markdown("<span style='font-size: 14px;'>X:</span>", unsafe_allow_html=True)
                     
                     # Y Position
                     with slider_col:
@@ -433,7 +415,7 @@ class UIComponents:
                             )
                         )
                     with label_col:
-                        st.markdown("Y Position:")
+                        st.markdown("<span style='font-size: 14px;'>Y:</span>", unsafe_allow_html=True)
                     
                     # Variance control
                     with slider_col:
@@ -454,7 +436,7 @@ class UIComponents:
                             )
                         )
                     with label_col:
-                        st.markdown("Variance:")
+                        st.markdown("<span style='font-size: 14px;'>Var:</span>", unsafe_allow_html=True)
                     
                     # Height control
                     with slider_col:
@@ -475,7 +457,7 @@ class UIComponents:
                             )
                         )
                     with label_col:
-                        st.markdown("Magnitude:")
+                        st.markdown("<span style='font-size: 14px;'>Height:</span>", unsafe_allow_html=True)
                     
                     # Sign control
                     with slider_col:
@@ -494,7 +476,7 @@ class UIComponents:
                             )
                         )
                     with label_col:
-                        st.markdown("Sign:")
+                        st.markdown("<span style='font-size: 14px;'>Sign:</span>", unsafe_allow_html=True)
                 else:
                     st.warning("No blob selected. Use the dropdown menu to select a blob.")
             else:
@@ -588,8 +570,8 @@ class UIComponents:
             calculator: Calculator for computing distances
             on_update: Callback function for state updates
         """
-        has_a = not distribution_a.is_empty()
-        has_b = not distribution_b.is_empty()
+        has_a = not distribution_a.is_empty
+        has_b = not distribution_b.is_empty
         
         if has_a and has_b:
             # Calculate distances
@@ -674,7 +656,7 @@ class UIComponents:
         
         with col1:
             st.markdown("### Export Data")
-            if not distribution_a.is_empty() or not distribution_b.is_empty():
+            if not distribution_a.is_empty or not distribution_b.is_empty:
                 export_link = controller.export_distributions_to_csv(distribution_a, distribution_b)
                 st.markdown(export_link, unsafe_allow_html=True)
             else:
