@@ -51,6 +51,10 @@ if 'bottleneck_matching' not in st.session_state:
 # Initialize the transport line visibility
 if 'show_transport_lines' not in st.session_state:
     st.session_state.show_transport_lines = False
+    
+# Initialize selected element for direct manipulation
+if 'selected_element' not in st.session_state:
+    st.session_state.selected_element = None
 
 def toggle_active_distribution(dist_name):
     st.session_state.active_distribution = dist_name
@@ -108,14 +112,6 @@ def handle_plot_click(trace, points, state):
     if len(points.point_inds) == 0:
         return
     
-    # Get the button that was used for the click (if available in the state)
-    button = state.get('button', 0) if state and isinstance(state, dict) else 0
-    
-    # Middle click (button = 1) will be used for dragging operations
-    if button == 1:  # Middle button
-        # This is handled in the middle_click_drag function
-        return
-    
     # Check if we clicked on a center or variance circle by examining customdata
     if points.point_inds and hasattr(points, 'customdata') and len(points.customdata) > 0:
         customdata = points.customdata[0]
@@ -123,68 +119,25 @@ def handle_plot_click(trace, points, state):
         # If we have customdata, check what type of element was clicked
         if isinstance(customdata, dict) and 'type' in customdata:
             if customdata['type'] == 'center' or customdata['type'] == 'variance':
-                # Don't add a new blob if we clicked on an existing blob or variance circle
+                # Store the selected element info in the session state for direct manipulation
+                st.session_state.selected_element = {
+                    'type': customdata['type'],
+                    'dist': customdata['dist'],
+                    'id': customdata['id']
+                }
+                st.rerun()
                 return
     
-    # If we didn't click on an existing element, add a new blob using left click
+    # If we didn't click on an existing element, add a new blob
     x, y = points.xs[0], points.ys[0]
     add_blob(st.session_state.active_distribution, x, y)
 
 def handle_drag_event(trace, points, state):
-    """Handle drag events to move blob centers or adjust variance circles"""
-    if not points.point_inds or not hasattr(points, 'customdata') or len(points.customdata) == 0:
-        return
-    
-    # Get the button that was used (if available in the state)
-    button = state.get('button', 0) if state and isinstance(state, dict) else 0
-    
-    # Only handle middle-click drag events (button = 1)
-    # Button 0 = left, 1 = middle, 2 = right
-    if button != 1:
-        return
-        
-    # Get the customdata from the first point
-    customdata = points.customdata[0]
-    
-    # Ensure customdata is a dict with the expected fields
-    if not isinstance(customdata, dict) or 'type' not in customdata or 'dist' not in customdata or 'id' not in customdata:
-        return
-    
-    drag_type = customdata['type']
-    dist_name = customdata['dist']
-    blob_id = customdata['id']
-    
-    # Get the new coordinates
-    new_x, new_y = points.xs[0], points.ys[0]
-    
-    # Ensure coordinates stay within the plot bounds
-    new_x = max(0, min(10, new_x))
-    new_y = max(0, min(10, new_y))
-    
-    # Handle different types of drag events
-    if drag_type == 'center':
-        # Update the position of the blob center
-        update_blob(dist_name, blob_id, x=new_x, y=new_y)
-        st.rerun()
-    
-    elif drag_type == 'variance':
-        # Find the blob being updated
-        distribution = st.session_state.distribution_a if dist_name == 'A' else st.session_state.distribution_b
-        
-        # Find the blob with the matching ID
-        for blob in distribution.blobs:
-            if blob['id'] == blob_id:
-                # Calculate the new variance based on distance from center
-                center_x, center_y = blob['x'], blob['y']
-                distance = ((new_x - center_x)**2 + (new_y - center_y)**2)**0.5
-                
-                # Set a minimum variance to prevent issues
-                new_variance = max(0.1, distance**2 / 2)
-                
-                # Update the variance
-                update_blob(dist_name, blob_id, variance=new_variance)
-                st.rerun()
-                break
+    """
+    This function doesn't effectively handle drag events in the current Streamlit/Plotly integration.
+    We'll use direct controls instead.
+    """
+    pass
 
 def export_to_csv():
     output = io.StringIO()
@@ -250,15 +203,13 @@ with st.expander("About this tool"):
     ## How to use:
     
     1. Create Gaussian blobs by clicking on the 2D plane or using the spreadsheet interface
-    2. Use middle-click (mouse wheel click) to drag blob centers and adjust their positions
-    3. Middle-click and drag the dotted circles to adjust variance (spread)
+    2. Click on a blob center or variance circle to select it for direct manipulation
+    3. Use the sliders that appear to precisely adjust position or variance
     4. Toggle the bottleneck transport lines to visualize optimal matching between distributions
     5. Change height/intensity and sign using the spreadsheet
     6. Switch between distributions A and B or view both simultaneously
     7. Watch how the distances change in real-time
     8. Import/export your distributions as CSV files
-    
-    **Note:** Middle-click (mouse wheel button) must be used for dragging elements to avoid interference with the regular left-click interface.
     
     The tool calculates distances between both continuous Gaussian mixtures and the discrete weighted centers.
     """)
@@ -374,8 +325,11 @@ with center_col:
         matching_pairs=st.session_state.bottleneck_matching if hasattr(st.session_state, 'bottleneck_matching') else []
     )
     
-    # Set the dragmode to 'pan' which allows for dragging elements
-    fig.update_layout(dragmode='pan')
+    # Set the dragmode to 'drag' to support element dragging
+    fig.update_layout(
+        dragmode='zoom',  # Use zoom mode which allows for regular drag behavior
+        modebar_add=['drawopenpath', 'eraseshape']
+    )
     
     # Add event callbacks
     st.plotly_chart(
@@ -384,6 +338,79 @@ with center_col:
         on_click=handle_plot_click,
         on_dragend=handle_drag_event  # Add drag event handler
     )
+    
+    # Add direct manipulation controls if an element is selected
+    if st.session_state.selected_element:
+        st.markdown("### Direct Manipulation Controls")
+        sel = st.session_state.selected_element
+        dist_name = sel['dist']
+        blob_id = sel['id']
+        element_type = sel['type']
+        
+        # Get the selected distribution
+        distribution = st.session_state.distribution_a if dist_name == 'A' else st.session_state.distribution_b
+        
+        # Find the selected blob
+        for blob in distribution.blobs:
+            if blob['id'] == blob_id:
+                # Different controls based on element type
+                if element_type == 'center':
+                    st.write(f"Adjust position of Blob {dist_name}{blob_id}")
+                    
+                    # Create a two-column layout for X and Y sliders
+                    slider_col1, slider_col2 = st.columns(2)
+                    
+                    with slider_col1:
+                        new_x = st.slider(
+                            "X Position", 
+                            min_value=0.0, 
+                            max_value=10.0, 
+                            value=float(blob['x']), 
+                            step=0.1, 
+                            key=f"x_slider_{dist_name}{blob_id}"
+                        )
+                    
+                    with slider_col2:
+                        new_y = st.slider(
+                            "Y Position", 
+                            min_value=0.0, 
+                            max_value=10.0, 
+                            value=float(blob['y']), 
+                            step=0.1,
+                            key=f"y_slider_{dist_name}{blob_id}"
+                        )
+                    
+                    # Apply changes button
+                    if st.button("Apply Position Changes", key=f"apply_pos_{dist_name}{blob_id}"):
+                        update_blob(dist_name, blob_id, x=new_x, y=new_y)
+                    
+                    # Clear selection button
+                    if st.button("Clear Selection", key=f"clear_{dist_name}{blob_id}"):
+                        st.session_state.selected_element = None
+                        st.rerun()
+                
+                elif element_type == 'variance':
+                    st.write(f"Adjust variance (spread) of Blob {dist_name}{blob_id}")
+                    
+                    new_variance = st.slider(
+                        "Variance", 
+                        min_value=0.1, 
+                        max_value=5.0, 
+                        value=float(blob['variance']), 
+                        step=0.1,
+                        key=f"var_slider_{dist_name}{blob_id}"
+                    )
+                    
+                    # Apply changes button 
+                    if st.button("Apply Variance Changes", key=f"apply_var_{dist_name}{blob_id}"):
+                        update_blob(dist_name, blob_id, variance=new_variance)
+                    
+                    # Clear selection button
+                    if st.button("Clear Selection", key=f"clear_{dist_name}{blob_id}"):
+                        st.session_state.selected_element = None
+                        st.rerun()
+                
+                break
     
     # Calculate and display distances
     has_a = len(st.session_state.distribution_a.blobs) > 0
