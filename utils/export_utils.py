@@ -8,6 +8,7 @@ import datetime
 import plotly.graph_objects as go
 from models.distribution import Distribution
 from controllers.distance_calculator import DistanceCalculator
+from controllers.app_state import AppState
 
 def generate_distribution_data(dist_a: Distribution, dist_b: Distribution, selected_transport: str = "hide") -> Dict[str, Any]:
     """
@@ -147,6 +148,9 @@ def generate_html_report(dist_a: Distribution, dist_b: Distribution,
     # Get distribution data with focus on selected transport plan
     data = generate_distribution_data(dist_a, dist_b, current_plan)
     
+    # Add current plan for use in formatting
+    data["current_plan"] = current_plan
+    
     # Generate HTML content
     html = f"""
     <!DOCTYPE html>
@@ -256,72 +260,49 @@ def generate_html_report(dist_a: Distribution, dist_b: Distribution,
         """
     
     # Add distance matrices if available
-    if "distance_matrices" in data and data["distance_matrices"]["spatial"]:
-        spatial_matrix = data["distance_matrices"]["spatial"]
-        height_matrix = data["distance_matrices"]["height"]
+    if "distance_matrices" in data and "matrix" in data["distance_matrices"] and len(data["distance_matrices"]["matrix"]) > 0:
+        matrix = data["distance_matrices"]["matrix"]
         indices_a = data["distance_matrices"]["blob_indices_a"]
         indices_b = data["distance_matrices"]["blob_indices_b"]
+        matrix_type = data["distance_matrices"]["metric_type"]
         
-        html += """
-        <h2>Distance Matrices</h2>
-        <h3>Spatial Distance Matrix</h3>
+        # Choose the appropriate title based on matrix type
+        matrix_title = "Spatial Distance Matrix" if matrix_type == "spatial" else "Height-Based Distance Matrix"
+        
+        html += f"""
+        <h2>Distance Matrix</h2>
+        <h3>{matrix_title}</h3>
         <table>
             <tr>
                 <th></th>
         """
         
-        # Add column headers for spatial matrix
+        # Add column headers
         for j, idx_b in enumerate(indices_b):
             blob_b = next((b for b in data['distribution_b']['blobs'] if b['id'] == idx_b), None)
             if blob_b:
-                html += f"<th>B{idx_b} [{blob_b['x']:.2f}, {blob_b['y']:.2f}]</th>"
+                if matrix_type == "spatial":
+                    html += f"<th>B{idx_b} [{blob_b['x']:.2f}, {blob_b['y']:.2f}]</th>"
+                else:
+                    html += f"<th>B{idx_b} [{blob_b['height']:.2f}]</th>"
             else:
                 html += f"<th>B{idx_b}</th>"
         
         html += "</tr>"
         
-        # Add spatial matrix rows
+        # Add matrix rows
         for i, idx_a in enumerate(indices_a):
             blob_a = next((b for b in data['distribution_a']['blobs'] if b['id'] == idx_a), None)
             if blob_a:
-                html += f"<tr><th>A{idx_a} [{blob_a['x']:.2f}, {blob_a['y']:.2f}]</th>"
+                if matrix_type == "spatial":
+                    html += f"<tr><th>A{idx_a} [{blob_a['x']:.2f}, {blob_a['y']:.2f}]</th>"
+                else:
+                    html += f"<tr><th>A{idx_a} [{blob_a['height']:.2f}]</th>"
             else:
                 html += f"<tr><th>A{idx_a}</th>"
             
             for j in range(len(indices_b)):
-                html += f"<td>{spatial_matrix[i][j]:.4f}</td>"
-            
-            html += "</tr>"
-        
-        html += """
-        </table>
-        
-        <h3>Height-Based Distance Matrix</h3>
-        <table>
-            <tr>
-                <th></th>
-        """
-        
-        # Add column headers for height matrix
-        for j, idx_b in enumerate(indices_b):
-            blob_b = next((b for b in data['distribution_b']['blobs'] if b['id'] == idx_b), None)
-            if blob_b:
-                html += f"<th>B{idx_b} [{blob_b['height']:.2f}]</th>"
-            else:
-                html += f"<th>B{idx_b}</th>"
-        
-        html += "</tr>"
-        
-        # Add height matrix rows
-        for i, idx_a in enumerate(indices_a):
-            blob_a = next((b for b in data['distribution_a']['blobs'] if b['id'] == idx_a), None)
-            if blob_a:
-                html += f"<tr><th>A{idx_a} [{blob_a['height']:.2f}]</th>"
-            else:
-                html += f"<tr><th>A{idx_a}</th>"
-            
-            for j in range(len(indices_b)):
-                html += f"<td>{height_matrix[i][j]:.4f}</td>"
+                html += f"<td>{matrix[i][j]:.4f}</td>"
             
             html += "</tr>"
         
@@ -331,43 +312,41 @@ def generate_html_report(dist_a: Distribution, dist_b: Distribution,
         <div class="separator"></div>
         """
     
-    # Add transport plans if available
+    # Add transport plan if available
     if "transport_plans" in data and data["transport_plans"]:
-        html += """
-        <h2>Transport Plans</h2>
+        plan_data = data["transport_plans"]
+        transport_type = "Transport Plan"
+        if current_plan.startswith("bottleneck"):
+            transport_type = "Bottleneck Matching"
+        elif current_plan.startswith("wasserstein"):
+            transport_type = "Wasserstein Transport Plan"
+            
+        html += f"""
+        <h2>Selected {transport_type}</h2>
+        <table>
+            <tr>
+                <th>Blob A</th>
+                <th>Blob B</th>
+                <th>Spatial Distance</th>
+                <th>Height Distance</th>
+                <th>Weight</th>
+            </tr>
         """
         
-        # Add each transport plan
-        for plan_name, plan_data in data["transport_plans"].items():
-            if plan_data:
-                # Format the plan name nicely
-                formatted_name = plan_name.replace("_", " ").title()
-                html += f"""
-                <h3>{formatted_name} Transport Plan</h3>
-                <table>
-                    <tr>
-                        <th>Blob A</th>
-                        <th>Blob B</th>
-                        <th>Spatial Distance</th>
-                        <th>Height Distance</th>
-                        <th>Weight</th>
-                    </tr>
-                """
-                
-                for match in plan_data:
-                    html += f"""
-                    <tr>
-                        <td>A{match['blob_a_id']} [{match['blob_a_position'][0]:.2f}, {match['blob_a_position'][1]:.2f}] (h={match['blob_a_height']:.2f})</td>
-                        <td>B{match['blob_b_id']} [{match['blob_b_position'][0]:.2f}, {match['blob_b_position'][1]:.2f}] (h={match['blob_b_height']:.2f})</td>
-                        <td>{match['spatial_distance']:.4f}</td>
-                        <td>{match['height_distance']:.4f}</td>
-                        <td>{match['weight']:.4f}</td>
-                    </tr>
-                    """
-                
-                html += """
-                </table>
-                """
+        for match in plan_data:
+            html += f"""
+            <tr>
+                <td>A{match['blob_a_id']} [{match['blob_a_position'][0]:.2f}, {match['blob_a_position'][1]:.2f}] (h={match['blob_a_height']:.2f})</td>
+                <td>B{match['blob_b_id']} [{match['blob_b_position'][0]:.2f}, {match['blob_b_position'][1]:.2f}] (h={match['blob_b_height']:.2f})</td>
+                <td>{match['spatial_distance']:.4f}</td>
+                <td>{match['height_distance']:.4f}</td>
+                <td>{match['weight']:.4f}</td>
+            </tr>
+            """
+        
+        html += """
+        </table>
+        """
         
         html += """
         <div class="separator"></div>
@@ -438,8 +417,19 @@ def export_to_formats(dist_a: Distribution, dist_b: Distribution,
     Returns:
         Dictionary with download links for different formats
     """
-    # Generate data
-    data = generate_distribution_data(dist_a, dist_b)
+    # Determine which transport plan is currently selected
+    current_plan = "hide"
+    if AppState.is_showing_bottleneck():
+        current_plan = "bottleneck_spatial"
+    elif AppState.is_showing_wasserstein():
+        current_plan = "wasserstein_spatial"
+    elif AppState.is_showing_height_bottleneck():
+        current_plan = "bottleneck_height"
+    elif AppState.is_showing_height_wasserstein():
+        current_plan = "wasserstein_height"
+    
+    # Generate data with focus on selected transport plan
+    data = generate_distribution_data(dist_a, dist_b, current_plan)
     
     # Generate HTML report
     html_content = generate_html_report(dist_a, dist_b, fig)
