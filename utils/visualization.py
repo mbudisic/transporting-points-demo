@@ -2,6 +2,179 @@ import numpy as np
 import plotly.graph_objects as go
 from utils.distribution_utils import Distribution, create_gaussian_mixture
 
+def create_wasserstein_transport_plot(distribution_a, distribution_b, wasserstein_pairs):
+    """
+    Create a plot showing the Wasserstein transportation plan between two distributions.
+    
+    Args:
+        distribution_a: Distribution object for the first distribution
+        distribution_b: Distribution object for the second distribution
+        wasserstein_pairs: List of tuples (idx_a, idx_b, weight) indicating matched blob indices and transport weight
+        
+    Returns:
+        Plotly figure object with Wasserstein transport lines
+    """
+    # Get centers of mass if needed for virtual points
+    centers_a = [(blob['x'], blob['y']) for blob in distribution_a.blobs]
+    centers_b = [(blob['x'], blob['y']) for blob in distribution_b.blobs]
+    
+    # Calculate center of mass for positive and negative components of each distribution
+    pos_centers_a = [c for i, c in enumerate(centers_a) if distribution_a.blobs[i]['sign'] > 0]
+    neg_centers_a = [c for i, c in enumerate(centers_a) if distribution_a.blobs[i]['sign'] < 0]
+    pos_centers_b = [c for i, c in enumerate(centers_b) if distribution_b.blobs[i]['sign'] > 0]
+    neg_centers_b = [c for i, c in enumerate(centers_b) if distribution_b.blobs[i]['sign'] < 0]
+    
+    # Calculate centers of mass for positive/negative groups
+    center_of_mass_pos_a = np.mean(pos_centers_a, axis=0) if pos_centers_a else np.array([2.5, 2.5])
+    center_of_mass_neg_a = np.mean(neg_centers_a, axis=0) if neg_centers_a else np.array([7.5, 7.5])
+    center_of_mass_pos_b = np.mean(pos_centers_b, axis=0) if pos_centers_b else np.array([2.5, 2.5])
+    center_of_mass_neg_b = np.mean(neg_centers_b, axis=0) if neg_centers_b else np.array([7.5, 7.5])
+    
+    # Calculate overall centers of mass
+    center_of_mass_all_a = np.mean(centers_a, axis=0) if centers_a else np.array([5, 5])
+    center_of_mass_all_b = np.mean(centers_b, axis=0) if centers_b else np.array([5, 5])
+    
+    fig = go.Figure()
+    
+    # Add transport lines
+    for pair in wasserstein_pairs:
+        idx_a, idx_b, weight = pair
+        
+        # Handle normal point-to-point connections
+        if idx_a >= 0 and idx_b >= 0:
+            blob_a = distribution_a.blobs[idx_a]
+            blob_b = distribution_b.blobs[idx_b]
+            
+            # Determine line color based on sign
+            line_color = 'green' if blob_a['sign'] > 0 else 'orange'
+            line_width = 1 + 3 * weight  # Scale line width by flow weight
+            
+            # Draw a line connecting the matched blobs
+            fig.add_trace(go.Scatter(
+                x=[blob_a['x'], blob_b['x']],
+                y=[blob_a['y'], blob_b['y']],
+                mode='lines',
+                line=dict(color=line_color, width=line_width),
+                showlegend=False,
+                hoverinfo='text',
+                hovertext=f'Flow: A{idx_a} → B{idx_b}<br>Weight: {weight:.2f}'
+            ))
+            
+        # Handle virtual points from distribution A to B
+        elif idx_a >= 0 and idx_b < 0:
+            blob_a = distribution_a.blobs[idx_a]
+            
+            # Choose target based on virtual point code
+            if idx_b == -1:  # Center of mass of positive points in B
+                target_x, target_y = center_of_mass_pos_b
+                target_name = "center(B+)"
+            elif idx_b == -2:  # Geometric center of all points in B
+                target_x, target_y = center_of_mass_all_b
+                target_name = "center(B)"
+            elif idx_b == -3:  # Center of mass of negative points in B
+                target_x, target_y = center_of_mass_neg_b
+                target_name = "center(B-)"
+            else:  # Geometric center for negative (idx_b == -4)
+                target_x, target_y = center_of_mass_all_b
+                target_name = "center(B)"
+            
+            # Determine line color based on sign
+            line_color = 'green' if blob_a['sign'] > 0 else 'orange'
+            line_width = 1 + 3 * weight  # Scale line width by flow weight
+            line_dash = 'dash'  # Use dashed line for virtual points
+            
+            # Draw a line connecting the blob to the virtual point
+            fig.add_trace(go.Scatter(
+                x=[blob_a['x'], target_x],
+                y=[blob_a['y'], target_y],
+                mode='lines',
+                line=dict(color=line_color, width=line_width, dash=line_dash),
+                showlegend=False,
+                hoverinfo='text',
+                hovertext=f'Flow: A{idx_a} → {target_name}<br>Weight: {weight:.2f}'
+            ))
+            
+        # Handle virtual points from distribution B to A
+        elif idx_a < 0 and idx_b >= 0:
+            blob_b = distribution_b.blobs[idx_b]
+            
+            # Choose source based on virtual point code
+            if idx_a == -1:  # Center of mass of positive points in A
+                source_x, source_y = center_of_mass_pos_a
+                source_name = "center(A+)"
+            elif idx_a == -2:  # Geometric center of all points in A
+                source_x, source_y = center_of_mass_all_a
+                source_name = "center(A)"
+            elif idx_a == -3:  # Center of mass of negative points in A
+                source_x, source_y = center_of_mass_neg_a
+                source_name = "center(A-)"
+            else:  # Geometric center for negative (idx_a == -4)
+                source_x, source_y = center_of_mass_all_a
+                source_name = "center(A)"
+            
+            # Determine line color based on sign
+            line_color = 'green' if blob_b['sign'] > 0 else 'orange'
+            line_width = 1 + 3 * weight  # Scale line width by flow weight
+            line_dash = 'dash'  # Use dashed line for virtual points
+            
+            # Draw a line connecting the virtual point to the blob
+            fig.add_trace(go.Scatter(
+                x=[source_x, blob_b['x']],
+                y=[source_y, blob_b['y']],
+                mode='lines',
+                line=dict(color=line_color, width=line_width, dash=line_dash),
+                showlegend=False,
+                hoverinfo='text',
+                hovertext=f'Flow: {source_name} → B{idx_b}<br>Weight: {weight:.2f}'
+            ))
+    
+    # Add markers for center of mass points if needed
+    if any(idx_a < 0 or idx_b < 0 for idx_a, idx_b, _ in wasserstein_pairs):
+        center_points = []
+        center_names = []
+        center_colors = []
+        
+        if pos_centers_a:
+            center_points.append((center_of_mass_pos_a[0], center_of_mass_pos_a[1]))
+            center_names.append("center(A+)")
+            center_colors.append("darkred")
+        
+        if neg_centers_a:
+            center_points.append((center_of_mass_neg_a[0], center_of_mass_neg_a[1]))
+            center_names.append("center(A-)")
+            center_colors.append("orangered")
+            
+        if pos_centers_b:
+            center_points.append((center_of_mass_pos_b[0], center_of_mass_pos_b[1]))
+            center_names.append("center(B+)")
+            center_colors.append("darkblue")
+            
+        if neg_centers_b:
+            center_points.append((center_of_mass_neg_b[0], center_of_mass_neg_b[1]))
+            center_names.append("center(B-)")
+            center_colors.append("mediumpurple")
+        
+        # Add markers for centers of mass
+        for (x, y), name, color in zip(center_points, center_names, center_colors):
+            fig.add_trace(go.Scatter(
+                x=[x],
+                y=[y],
+                mode='markers+text',
+                marker=dict(
+                    symbol='x',
+                    size=8,
+                    color=color
+                ),
+                text=name,
+                textposition="top center",
+                textfont=dict(size=10),
+                showlegend=False,
+                hoverinfo='text',
+                hovertext=f'{name}: ({x:.2f}, {y:.2f})'
+            ))
+    
+    return fig
+
 def create_bottleneck_transport_plot(distribution_a, distribution_b, matching_pairs):
     """
     Create a plot showing the bottleneck transportation plan between two distributions.
@@ -270,7 +443,9 @@ def add_blob_labels(fig, blob, dist_name):
         hoverinfo='none'
     ))
 
-def create_interactive_plot(distribution_a, distribution_b, active_distribution='A', show_both=True, show_transport_lines=False, matching_pairs=None):
+def create_interactive_plot(distribution_a, distribution_b, active_distribution='A', show_both=True, 
+                      show_bottleneck_lines=False, bottleneck_pairs=None,
+                      show_wasserstein_lines=False, wasserstein_pairs=None):
     """
     Create an interactive plot that allows users to manipulate the distributions.
     
@@ -279,8 +454,10 @@ def create_interactive_plot(distribution_a, distribution_b, active_distribution=
         distribution_b: Distribution object for the second distribution
         active_distribution: Which distribution is being actively edited
         show_both: Whether to show both distributions or just the active one
-        show_transport_lines: Whether to show the bottleneck transport lines
-        matching_pairs: List of tuples (idx_a, idx_b) indicating matched blob indices
+        show_bottleneck_lines: Whether to show the bottleneck transport lines
+        bottleneck_pairs: List of tuples (idx_a, idx_b) indicating matched blob indices for bottleneck
+        show_wasserstein_lines: Whether to show the Wasserstein transport lines
+        wasserstein_pairs: List of tuples (idx_a, idx_b, weight) indicating matched blob indices for Wasserstein
         
     Returns:
         Plotly figure object
@@ -509,8 +686,8 @@ def create_interactive_plot(distribution_a, distribution_b, active_distribution=
     )
     
     # Add bottleneck transport lines if requested
-    if show_transport_lines and matching_pairs:
-        for idx_a, idx_b in matching_pairs:
+    if show_bottleneck_lines and bottleneck_pairs:
+        for idx_a, idx_b in bottleneck_pairs:
             try:
                 # Get the blob objects using their indices
                 if idx_a < len(distribution_a.blobs) and idx_b < len(distribution_b.blobs):
@@ -530,11 +707,166 @@ def create_interactive_plot(distribution_a, distribution_b, active_distribution=
                         line=dict(color=line_color, width=line_width, dash=line_dash),
                         showlegend=False,
                         hoverinfo='text',
-                        hovertext=f'Match: A{blob_a["id"]} ↔ B{blob_b["id"]}<br>Distance: {((blob_a["x"]-blob_b["x"])**2 + (blob_a["y"]-blob_b["y"])**2)**0.5:.2f}'
+                        hovertext=f'Bottleneck: A{blob_a["id"]} ↔ B{blob_b["id"]}<br>Distance: {((blob_a["x"]-blob_b["x"])**2 + (blob_a["y"]-blob_b["y"])**2)**0.5:.2f}'
                     ))
             except (IndexError, KeyError):
                 # Skip invalid indices or missing data
                 continue
+    
+    # Add Wasserstein transport lines if requested
+    if show_wasserstein_lines and wasserstein_pairs:
+        # Get centers of mass if needed for virtual points
+        centers_a = [(blob['x'], blob['y']) for blob in distribution_a.blobs]
+        centers_b = [(blob['x'], blob['y']) for blob in distribution_b.blobs]
+        
+        # Calculate center of mass for positive and negative components of each distribution
+        pos_centers_a = [c for i, c in enumerate(centers_a) if distribution_a.blobs[i]['sign'] > 0]
+        neg_centers_a = [c for i, c in enumerate(centers_a) if distribution_a.blobs[i]['sign'] < 0]
+        pos_centers_b = [c for i, c in enumerate(centers_b) if distribution_b.blobs[i]['sign'] > 0]
+        neg_centers_b = [c for i, c in enumerate(centers_b) if distribution_b.blobs[i]['sign'] < 0]
+        
+        # Calculate centers of mass for positive/negative groups
+        center_of_mass_pos_a = np.mean(pos_centers_a, axis=0) if pos_centers_a else np.array([2.5, 2.5])
+        center_of_mass_neg_a = np.mean(neg_centers_a, axis=0) if neg_centers_a else np.array([7.5, 7.5])
+        center_of_mass_pos_b = np.mean(pos_centers_b, axis=0) if pos_centers_b else np.array([2.5, 2.5])
+        center_of_mass_neg_b = np.mean(neg_centers_b, axis=0) if neg_centers_b else np.array([7.5, 7.5])
+        
+        # Calculate overall centers of mass
+        center_of_mass_all_a = np.mean(centers_a, axis=0) if centers_a else np.array([5, 5])
+        center_of_mass_all_b = np.mean(centers_b, axis=0) if centers_b else np.array([5, 5])
+        
+        for pair in wasserstein_pairs:
+            idx_a, idx_b, weight = pair
+            
+            # Handle normal point-to-point connections
+            if idx_a >= 0 and idx_b >= 0:
+                try:
+                    blob_a = distribution_a.blobs[idx_a]
+                    blob_b = distribution_b.blobs[idx_b]
+                    
+                    # Determine line color and width based on sign and weight
+                    line_color = 'teal' if blob_a['sign'] > 0 else 'purple'
+                    line_width = 1 + 3 * weight  # Scale line width by flow weight
+                    
+                    # Draw a line connecting the matched blobs
+                    fig.add_trace(go.Scatter(
+                        x=[blob_a['x'], blob_b['x']],
+                        y=[blob_a['y'], blob_b['y']],
+                        mode='lines',
+                        line=dict(color=line_color, width=line_width),
+                        showlegend=False,
+                        hoverinfo='text',
+                        hovertext=f'Wasserstein: A{idx_a} → B{idx_b}<br>Weight: {weight:.2f}'
+                    ))
+                except (IndexError, KeyError):
+                    # Skip invalid indices or missing data
+                    continue
+                
+            # Handle virtual points from distribution A to B
+            elif idx_a >= 0 and idx_b < 0:
+                try:
+                    blob_a = distribution_a.blobs[idx_a]
+                    
+                    # Choose target based on virtual point code
+                    if idx_b == -1:  # Center of mass of positive points in B
+                        target_x, target_y = center_of_mass_pos_b
+                        target_name = "center(B+)"
+                    elif idx_b == -2:  # Geometric center of all points in B
+                        target_x, target_y = center_of_mass_all_b
+                        target_name = "center(B)"
+                    elif idx_b == -3:  # Center of mass of negative points in B
+                        target_x, target_y = center_of_mass_neg_b
+                        target_name = "center(B-)"
+                    else:  # Geometric center for negative (idx_b == -4)
+                        target_x, target_y = center_of_mass_all_b
+                        target_name = "center(B)"
+                    
+                    # Determine line color based on sign
+                    line_color = 'teal' if blob_a['sign'] > 0 else 'purple'
+                    line_width = 1 + 3 * weight  # Scale line width by flow weight
+                    line_dash = 'dash'  # Use dashed line for virtual points
+                    
+                    # Draw a line connecting the blob to the virtual point
+                    fig.add_trace(go.Scatter(
+                        x=[blob_a['x'], target_x],
+                        y=[blob_a['y'], target_y],
+                        mode='lines',
+                        line=dict(color=line_color, width=line_width, dash=line_dash),
+                        showlegend=False,
+                        hoverinfo='text',
+                        hovertext=f'Wasserstein: A{idx_a} → {target_name}<br>Weight: {weight:.2f}'
+                    ))
+                    
+                    # Add marker for the virtual point if not already added
+                    fig.add_trace(go.Scatter(
+                        x=[target_x],
+                        y=[target_y],
+                        mode='markers',
+                        marker=dict(
+                            symbol='x',
+                            size=8,
+                            color=line_color
+                        ),
+                        showlegend=False,
+                        hoverinfo='text',
+                        hovertext=f'{target_name}: ({target_x:.2f}, {target_y:.2f})'
+                    ))
+                except (IndexError, KeyError):
+                    # Skip invalid indices or missing data
+                    continue
+                
+            # Handle virtual points from distribution B to A
+            elif idx_a < 0 and idx_b >= 0:
+                try:
+                    blob_b = distribution_b.blobs[idx_b]
+                    
+                    # Choose source based on virtual point code
+                    if idx_a == -1:  # Center of mass of positive points in A
+                        source_x, source_y = center_of_mass_pos_a
+                        source_name = "center(A+)"
+                    elif idx_a == -2:  # Geometric center of all points in A
+                        source_x, source_y = center_of_mass_all_a
+                        source_name = "center(A)"
+                    elif idx_a == -3:  # Center of mass of negative points in A
+                        source_x, source_y = center_of_mass_neg_a
+                        source_name = "center(A-)"
+                    else:  # Geometric center for negative (idx_a == -4)
+                        source_x, source_y = center_of_mass_all_a
+                        source_name = "center(A)"
+                    
+                    # Determine line color based on sign
+                    line_color = 'teal' if blob_b['sign'] > 0 else 'purple'
+                    line_width = 1 + 3 * weight  # Scale line width by flow weight
+                    line_dash = 'dash'  # Use dashed line for virtual points
+                    
+                    # Draw a line connecting the virtual point to the blob
+                    fig.add_trace(go.Scatter(
+                        x=[source_x, blob_b['x']],
+                        y=[source_y, blob_b['y']],
+                        mode='lines',
+                        line=dict(color=line_color, width=line_width, dash=line_dash),
+                        showlegend=False,
+                        hoverinfo='text',
+                        hovertext=f'Wasserstein: {source_name} → B{idx_b}<br>Weight: {weight:.2f}'
+                    ))
+                    
+                    # Add marker for the virtual point if not already added
+                    fig.add_trace(go.Scatter(
+                        x=[source_x],
+                        y=[source_y],
+                        mode='markers',
+                        marker=dict(
+                            symbol='x',
+                            size=8,
+                            color=line_color
+                        ),
+                        showlegend=False,
+                        hoverinfo='text',
+                        hovertext=f'{source_name}: ({source_x:.2f}, {source_y:.2f})'
+                    ))
+                except (IndexError, KeyError):
+                    # Skip invalid indices or missing data
+                    continue
     
     # Configure layout
     fig.update_layout(
