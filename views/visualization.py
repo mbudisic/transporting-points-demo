@@ -409,117 +409,23 @@ class VisualizationService:
                         showlegend=False
                     ))
         
-        # Add bottleneck transport lines if requested
-        if show_bottleneck_lines and bottleneck_pairs and not distribution_a.is_empty and not distribution_b.is_empty:
-            for pair in bottleneck_pairs:
-                idx_a, idx_b = pair
-                # Find the corresponding blobs
-                blob_a = distribution_a.get_blob(idx_a)
-                blob_b = distribution_b.get_blob(idx_b)
-                
-                if blob_a and blob_b:
-                    # Draw a line between the centers
-                    fig.add_trace(go.Scatter(
-                        x=[blob_a.x, blob_b.x],
-                        y=[blob_a.y, blob_b.y],
-                        mode='lines',
-                        line=dict(
-                            color='rgba(0, 0, 0, 0.8)',
-                            width=2
-                        ),
-                        name=f"Bottleneck A{idx_a}-B{idx_b}",
-                        hoverinfo="skip"
-                    ))
+        # Use the improved transport edge function to add all transport plan edges
+        # This replaces all the individual transport line additions
+        fig = VisualizationService._add_transport_edges(
+            fig,
+            distribution_a,
+            distribution_b,
+            show_bottleneck_lines=show_bottleneck_lines,
+            bottleneck_pairs=bottleneck_pairs,
+            show_wasserstein_lines=show_wasserstein_lines,
+            wasserstein_pairs=wasserstein_pairs,
+            show_height_bottleneck_lines=show_height_bottleneck_lines,
+            height_bottleneck_pairs=height_bottleneck_pairs,
+            show_height_wasserstein_lines=show_height_wasserstein_lines,
+            height_wasserstein_pairs=height_wasserstein_pairs
+        )
         
-        # Add Wasserstein transport lines if requested
-        if show_wasserstein_lines and wasserstein_pairs and not distribution_a.is_empty and not distribution_b.is_empty:
-            # Find max weight for normalization, ensure it's positive to avoid division by zero
-            max_weight = max(max([w for _, _, w in wasserstein_pairs]) if wasserstein_pairs else 0.01, 0.01)
-            
-            for pair in wasserstein_pairs:
-                idx_a, idx_b, weight = pair
-                # Find the corresponding blobs
-                blob_a = distribution_a.get_blob(idx_a)
-                blob_b = distribution_b.get_blob(idx_b)
-                
-                if blob_a and blob_b:
-                    # Normalize weight for visual scaling
-                    normalized_weight = weight / max_weight
-                    
-                    # Determine line width and opacity based on weight
-                    line_width = max(0.5, 1 + 4 * abs(normalized_weight))
-                    # Ensure opacity is between 0 and 1
-                    line_opacity = max(0.1, min(1.0, 0.3 + 0.7 * abs(normalized_weight)))
-                    
-                    # Draw a line between the centers
-                    fig.add_trace(go.Scatter(
-                        x=[blob_a.x, blob_b.x],
-                        y=[blob_a.y, blob_b.y],
-                        mode='lines',
-                        line=dict(
-                            color=f'rgba(0, 0, 0, {line_opacity})',
-                            width=line_width
-                        ),
-                        name=f"Wasserstein A{idx_a}-B{idx_b}",
-                        hoverinfo="skip"
-                    ))
-                    
-        # Add height-based bottleneck transport lines if requested (using a different color/style)
-        if show_height_bottleneck_lines and height_bottleneck_pairs and not distribution_a.is_empty and not distribution_b.is_empty:
-            for pair in height_bottleneck_pairs:
-                idx_a, idx_b = pair
-                # Find the corresponding blobs
-                blob_a = distribution_a.get_blob(idx_a)
-                blob_b = distribution_b.get_blob(idx_b)
-                
-                if blob_a and blob_b:
-                    # Draw a magenta line between the centers
-                    fig.add_trace(go.Scatter(
-                        x=[blob_a.x, blob_b.x],
-                        y=[blob_a.y, blob_b.y],
-                        mode='lines',
-                        line=dict(
-                            color='rgba(200, 30, 150, 0.8)',  # Magenta
-                            width=2,
-                            dash='dash'  # Dashed line for height-based
-                        ),
-                        name=f"Height Bottleneck A{idx_a}-B{idx_b}",
-                        hoverinfo="skip"
-                    ))
-        
-        # Add height-based Wasserstein transport lines if requested (using a different color/style)
-        if show_height_wasserstein_lines and height_wasserstein_pairs and not distribution_a.is_empty and not distribution_b.is_empty:
-            # Find max weight for normalization, ensure it's positive to avoid division by zero
-            max_weight = max(max([w for _, _, w in height_wasserstein_pairs]) if height_wasserstein_pairs else 0.01, 0.01)
-            
-            for pair in height_wasserstein_pairs:
-                idx_a, idx_b, weight = pair
-                # Find the corresponding blobs
-                blob_a = distribution_a.get_blob(idx_a)
-                blob_b = distribution_b.get_blob(idx_b)
-                
-                if blob_a and blob_b:
-                    # Normalize weight for visual scaling
-                    normalized_weight = weight / max_weight
-                    
-                    # Determine line width and opacity based on weight
-                    line_width = max(0.5, 1 + 4 * abs(normalized_weight))
-                    # Ensure opacity is between 0 and 1
-                    line_opacity = max(0.1, min(1.0, 0.3 + 0.7 * abs(normalized_weight)))
-                    
-                    # Draw a line between the centers
-                    fig.add_trace(go.Scatter(
-                        x=[blob_a.x, blob_b.x],
-                        y=[blob_a.y, blob_b.y],
-                        mode='lines',
-                        line=dict(
-                            color=f'rgba(200, 30, 150, {line_opacity})',  # Magenta
-                            width=line_width,
-                            dash='dot'  # Dotted line for height-based Wasserstein
-                        ),
-                        name=f"Height Wasserstein A{idx_a}-B{idx_b}",
-                        hoverinfo="skip"
-                    ))
+        # All transport visualization is now handled by _add_transport_edges
         
         # Set figure layout
         fig.update_layout(
