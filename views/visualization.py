@@ -8,6 +8,45 @@ class VisualizationService:
     Service for visualizing distributions and transport plans
     """
     @staticmethod
+    def _scale_heights_for_markers(distribution_a: Distribution, distribution_b: Distribution):
+        """
+        Scale absolute height values to a range between 1 and 5
+        
+        Args:
+            distribution_a: Distribution A
+            distribution_b: Distribution B
+            
+        Returns:
+            A function that scales an absolute height to the range [1, 5]
+        """
+        # Collect all heights from both distributions
+        all_heights = []
+        for blob in distribution_a.blobs:
+            all_heights.append(abs(blob.height))
+        for blob in distribution_b.blobs:
+            all_heights.append(abs(blob.height))
+            
+        # If no heights (no blobs), return default size of 3
+        if not all_heights:
+            return lambda h: 3
+            
+        # Find min and max to create scaling
+        min_height = min(all_heights) if all_heights else 0
+        max_height = max(all_heights) if all_heights else 1
+        
+        # Handle case where all heights are the same
+        if min_height == max_height:
+            return lambda h: 3  # Middle of the range
+            
+        # Create scaling function
+        def scale_height(height):
+            abs_height = abs(height)
+            # Scale between 1 and 5
+            return 1 + 4 * (abs_height - min_height) / (max_height - min_height)
+            
+        return scale_height
+    
+    @staticmethod
     def create_interactive_plot(
         distribution_a: Distribution, 
         distribution_b: Distribution,
@@ -44,6 +83,9 @@ class VisualizationService:
         X, Y = np.meshgrid(x_grid, y_grid)
         points = np.vstack([X.ravel(), Y.ravel()]).T
         
+        # Create height scaling function
+        height_scaler = VisualizationService._scale_heights_for_markers(distribution_a, distribution_b)
+        
         # Get distribution values on the grid
         if not distribution_a.is_empty:
             dist_a_values = distribution_a.create_gaussian_mixture(points)
@@ -65,7 +107,7 @@ class VisualizationService:
                         mode='markers+text',
                         marker=dict(
                             symbol=marker_symbol,
-                            size=12 + 3 * blob.height,
+                            size=12 * height_scaler(blob.height),
                             color=marker_color,
                             line=dict(width=2, color='black')
                         ),
@@ -153,7 +195,7 @@ class VisualizationService:
                         mode='markers+text',
                         marker=dict(
                             symbol=marker_symbol,
-                            size=12 + 3 * blob.height,
+                            size=12 * height_scaler(blob.height),
                             color=marker_color,
                             line=dict(width=2, color='black')
                         ),
