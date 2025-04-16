@@ -3,8 +3,8 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from utils.distribution_utils import create_gaussian_mixture, Distribution
-from utils.distance_calculator import calculate_wasserstein_continuous, calculate_wasserstein_discrete, calculate_bottleneck
-from utils.visualization import create_distribution_plot, create_interactive_plot, create_bottleneck_transport_plot
+from utils.distance_calculator import calculate_wasserstein_continuous, calculate_wasserstein_discrete, calculate_bottleneck, calculate_wasserstein_plan
+from utils.visualization import create_distribution_plot, create_interactive_plot, create_bottleneck_transport_plot, create_wasserstein_transport_plot
 import base64
 import io
 
@@ -48,9 +48,17 @@ if 'show_both' not in st.session_state:
 if 'bottleneck_matching' not in st.session_state:
     st.session_state.bottleneck_matching = []
     
-# Initialize the transport line visibility
-if 'show_transport_lines' not in st.session_state:
-    st.session_state.show_transport_lines = False
+# Initialize the bottleneck transport line visibility
+if 'show_bottleneck_lines' not in st.session_state:
+    st.session_state.show_bottleneck_lines = False
+
+# Initialize the Wasserstein transport plan
+if 'wasserstein_pairs' not in st.session_state:
+    st.session_state.wasserstein_pairs = []
+
+# Initialize the Wasserstein transport line visibility
+if 'show_wasserstein_lines' not in st.session_state:
+    st.session_state.show_wasserstein_lines = False
     
 # Initialize selected element for direct manipulation
 if 'selected_element' not in st.session_state:
@@ -221,9 +229,21 @@ left_col, center_col, right_col = st.columns([3, 6, 3])
 with left_col:
     st.subheader("Distribution A (Red)")
     
+    # Create columns for Add/Remove buttons
+    add_col_a, remove_col_a = st.columns(2)
+    
     # Add new blob button
-    if st.button("Add Blob to A"):
-        add_blob('A')
+    with add_col_a:
+        if st.button("Add Blob to A"):
+            add_blob('A')
+    
+    # Remove selected blob button
+    with remove_col_a:
+        if st.button("Remove Selected Blob", key="remove_selected_a") and st.session_state.selected_element:
+            sel = st.session_state.selected_element
+            if sel['dist'] == 'A':
+                remove_blob('A', sel['id'])
+                st.session_state.selected_element = None
     
     # Display table for distribution A
     st.markdown("### Distribution A Properties")
@@ -251,19 +271,26 @@ with left_col:
             original_row = df_a.iloc[index]
             if not np.array_equal(row.values, original_row.values):
                 update_blob('A', int(row['id']), row['x'], row['y'], row['variance'], row['height'], row['sign'])
-        
-        # Remove blob buttons
-        for blob_id in edited_df_a['id']:
-            if st.button(f"Remove Blob {int(blob_id)}", key=f"remove_a_{blob_id}"):
-                remove_blob('A', int(blob_id))
 
 # Right sidebar - Distribution B controls
 with right_col:
     st.subheader("Distribution B (Blue)")
     
+    # Create columns for Add/Remove buttons
+    add_col_b, remove_col_b = st.columns(2)
+    
     # Add new blob button
-    if st.button("Add Blob to B"):
-        add_blob('B')
+    with add_col_b:
+        if st.button("Add Blob to B"):
+            add_blob('B')
+    
+    # Remove selected blob button
+    with remove_col_b:
+        if st.button("Remove Selected Blob", key="remove_selected_b") and st.session_state.selected_element:
+            sel = st.session_state.selected_element
+            if sel['dist'] == 'B':
+                remove_blob('B', sel['id'])
+                st.session_state.selected_element = None
     
     # Display table for distribution B
     st.markdown("### Distribution B Properties")
@@ -291,11 +318,6 @@ with right_col:
             original_row = df_b.iloc[index]
             if not np.array_equal(row.values, original_row.values):
                 update_blob('B', int(row['id']), row['x'], row['y'], row['variance'], row['height'], row['sign'])
-        
-        # Remove blob buttons
-        for blob_id in edited_df_b['id']:
-            if st.button(f"Remove Blob {int(blob_id)}", key=f"remove_b_{blob_id}"):
-                remove_blob('B', int(blob_id))
 
 # Main area - Plot and distance metrics
 with center_col:
@@ -321,8 +343,10 @@ with center_col:
         st.session_state.distribution_b,
         active_distribution=st.session_state.active_distribution,
         show_both=st.session_state.show_both,
-        show_transport_lines=st.session_state.show_transport_lines,
-        matching_pairs=st.session_state.bottleneck_matching if hasattr(st.session_state, 'bottleneck_matching') else []
+        show_bottleneck_lines=st.session_state.show_bottleneck_lines,
+        bottleneck_pairs=st.session_state.bottleneck_matching,
+        show_wasserstein_lines=st.session_state.show_wasserstein_lines,
+        wasserstein_pairs=st.session_state.wasserstein_pairs
     )
     
     # Set the dragmode to 'drag' to support element dragging
@@ -460,13 +484,19 @@ with center_col:
             st.metric("Bottleneck Distance", f"{bottleneck_value:.4f}")
             st.info("Largest minimum distance to transform one distribution into another.")
             
-            # Add Toggle Bottleneck Transport button
+            # Add Transport Line Toggle Buttons
+            # Toggle for Bottleneck Transport Lines
             if st.button("Toggle Bottleneck Transport Lines"):
-                # Toggle the display of transport lines
-                if 'show_transport_lines' not in st.session_state:
-                    st.session_state.show_transport_lines = True
-                else:
-                    st.session_state.show_transport_lines = not st.session_state.show_transport_lines
+                st.session_state.show_bottleneck_lines = not st.session_state.show_bottleneck_lines
+                st.rerun()
+                
+            # Calculate Wasserstein transportation plan
+            wasserstein_value, wasserstein_pairs = calculate_wasserstein_plan(centers_a, centers_b, weights_a, weights_b)
+            st.session_state.wasserstein_pairs = wasserstein_pairs
+            
+            # Toggle for Wasserstein Transport Lines
+            if st.button("Toggle Wasserstein Transport Plan"):
+                st.session_state.show_wasserstein_lines = not st.session_state.show_wasserstein_lines
                 st.rerun()
     else:
         st.warning("Add blobs to both distributions to calculate distances.")
