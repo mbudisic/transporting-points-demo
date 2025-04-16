@@ -10,6 +10,42 @@ class POTDistanceCalculator:
     Implements both Wasserstein (Earth Mover's Distance) and Bottleneck distance metrics.
     """
     
+    @staticmethod
+    def calculate_wasserstein_continuous(dist_a: Distribution, dist_b: Distribution, grid_size: int = 100) -> float:
+        """
+        Calculate Wasserstein distance between two continuous distributions using POT.
+        
+        Args:
+            dist_a: First distribution
+            dist_b: Second distribution
+            grid_size: Number of points in the grid (higher = more accurate)
+            
+        Returns:
+            Wasserstein distance between the distributions
+        """
+        if not dist_a.blobs or not dist_b.blobs:
+            return 0.0
+            
+        # Extract positions and weights from distribution A
+        positions_a = np.array([blob.center for blob in dist_a.blobs])
+        weights_a = np.array([blob.height for blob in dist_a.blobs])
+        
+        # Extract positions and weights from distribution B
+        positions_b = np.array([blob.center for blob in dist_b.blobs])
+        weights_b = np.array([blob.height for blob in dist_b.blobs])
+        
+        # Normalize weights to create probability distributions
+        weights_a = np.abs(weights_a) / np.sum(np.abs(weights_a))
+        weights_b = np.abs(weights_b) / np.sum(np.abs(weights_b))
+        
+        # Calculate the distance matrix between positions
+        M = ot.dist(positions_a, positions_b)
+        
+        # Calculate Wasserstein distance using EMD
+        emd_value = ot.emd2(weights_a, weights_b, M)
+        
+        return float(emd_value)
+    
     # ---------- Utility Functions ----------
     
     @staticmethod
