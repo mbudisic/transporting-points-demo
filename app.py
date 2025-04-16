@@ -399,9 +399,9 @@ with left_col:
                         )
                     break
             else:
-                st.warning("No blob selected. Click on a row in the table to select a blob.")
+                st.warning("No blob selected. Use the dropdown menu to select a blob.")
         else:
-            st.info("No blob selected. Click on a row in the table to select a blob.")
+            st.info("No blob selected. Use the dropdown menu to select a blob.")
                 
         # Update distribution based on edited dataframe
         for index, row in edited_df_a.iterrows():
@@ -583,9 +583,9 @@ with right_col:
                         st.markdown("Sign:")
                     break
             else:
-                st.warning("No blob selected. Click on a row in the table to select a blob.")
+                st.warning("No blob selected. Use the dropdown menu to select a blob.")
         else:
-            st.info("No blob selected. Click on a row in the table to select a blob.")
+            st.info("No blob selected. Use the dropdown menu to select a blob.")
                 
         # Update distribution based on edited dataframe
         for index, row in edited_df_b.iterrows():
@@ -685,20 +685,46 @@ with center_col:
             st.metric("Bottleneck Distance", f"{bottleneck_value:.4f}")
             st.info("Largest minimum distance to transform one distribution into another.")
             
-            # Add Transport Line Toggle Buttons
-            # Toggle for Bottleneck Transport Lines
-            if st.button("Toggle Bottleneck Transport Lines"):
-                st.session_state.show_bottleneck_lines = not st.session_state.show_bottleneck_lines
-                st.rerun()
-                
             # Calculate Wasserstein transportation plan
             wasserstein_value, wasserstein_pairs = calculate_wasserstein_plan(centers_a, centers_b, weights_a, weights_b)
             st.session_state.wasserstein_pairs = wasserstein_pairs
             
-            # Toggle for Wasserstein Transport Lines
-            if st.button("Toggle Wasserstein Transport Plan"):
-                st.session_state.show_wasserstein_lines = not st.session_state.show_wasserstein_lines
-                st.rerun()
+            # Transport plan visualization with radio buttons
+            st.markdown("#### Transport Plan Visualization")
+            transport_options = ["Hide Transportation Plans", "Bottleneck Transport", "Wasserstein Transport"]
+            
+            # Determine the current selection index based on current state
+            current_option = 0  # Default to "Hide"
+            if st.session_state.show_bottleneck_lines:
+                current_option = 1  # "Bottleneck Transport"
+            elif st.session_state.show_wasserstein_lines:
+                current_option = 2  # "Wasserstein Transport"
+                
+            # Display radio buttons for transport plan selection
+            transport_selection = st.radio(
+                "Select visualization",
+                options=transport_options,
+                index=current_option,
+                horizontal=True,
+                key="transport_plan_radio"
+            )
+            
+            # Update visualization based on selection
+            if transport_selection == "Hide Transportation Plans":
+                st.session_state.show_bottleneck_lines = False
+                st.session_state.show_wasserstein_lines = False
+                if (st.session_state.show_bottleneck_lines or st.session_state.show_wasserstein_lines):
+                    st.rerun()
+            elif transport_selection == "Bottleneck Transport":
+                if not st.session_state.show_bottleneck_lines or st.session_state.show_wasserstein_lines:
+                    st.session_state.show_bottleneck_lines = True
+                    st.session_state.show_wasserstein_lines = False
+                    st.rerun()
+            elif transport_selection == "Wasserstein Transport":
+                if st.session_state.show_bottleneck_lines or not st.session_state.show_wasserstein_lines:
+                    st.session_state.show_bottleneck_lines = False
+                    st.session_state.show_wasserstein_lines = True
+                    st.rerun()
     else:
         st.warning("Add blobs to both distributions to calculate distances.")
 
