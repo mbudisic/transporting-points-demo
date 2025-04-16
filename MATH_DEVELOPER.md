@@ -7,10 +7,25 @@ This guide outlines the process for extending the Distribution Distance Visualiz
 The application follows an MVC (Model-View-Controller) architecture:
 
 - **Models** (`models/`): Define the data structures (blobs, distributions)
+  - `models/blob.py`: The `Blob` class defines properties like position, variance, and height
+  - `models/distribution.py`: The `Distribution` class manages collections of blobs
 - **Views** (`views/`): Handle UI components and visualizations
+  - `views/visualization.py`: Contains visualization services for rendering distributions and transport plans
+  - `views/ui_components.py`: Defines UI components like sliders, buttons, and tabs
 - **Controllers** (`controllers/`): Implement business logic and calculations
+  - `controllers/distance_calculator.py`: Contains all distance metric implementations
+  - `controllers/app_state.py`: Manages application state across the Streamlit app
 
-Mathematical operations are primarily located in the `controllers/distance_calculator.py` file, which contains the `DistanceCalculator` class.
+Mathematical operations are primarily located in the `controllers/distance_calculator.py` file (lines 1-586), which contains the `DistanceCalculator` class with the following key methods:
+
+- Lines 13-17: `_euclidean_distance()` - Utility function for distance calculations
+- Lines 20-31: `_create_distance_matrix()` - Creates cost matrices for transportation problems
+- Lines 34-36: `_solve_assignment_problem()` - Wrapper for the Hungarian algorithm
+- Lines 306-392: `calculate_wasserstein_plan()` - Implementation of Wasserstein distance and transport plan
+- Lines 452-503: `calculate_bottleneck()` - Implementation of bottleneck distance calculation
+- Lines 173-261: `calculate_height_wasserstein_plan()` - Height-based Wasserstein implementation
+- Lines 118-172: `calculate_height_bottleneck_plan()` - Height-based bottleneck implementation
+- Lines 507-586: Helper methods for mathematical validation and explanation
 
 ## Adding a New Distance Metric
 

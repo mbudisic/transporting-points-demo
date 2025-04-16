@@ -24,10 +24,23 @@ The application implements several distance metrics between probability distribu
 
 The core calculation code is located in `controllers/distance_calculator.py`. This file contains the implementation of:
 
-- `calculate_wasserstein_plan()`: Computes the Wasserstein distance and transportation plan
-- `calculate_bottleneck()`: Computes the bottleneck distance and matching
-- `calculate_height_wasserstein_plan()`: Computes the height-based Wasserstein distance
-- `calculate_height_bottleneck_plan()`: Computes the height-based bottleneck distance
+- `calculate_wasserstein_plan()` (lines 306-392): Computes the Wasserstein distance and transportation plan
+  - The key algorithm implementation is at lines 356-368 (positive blobs) and lines 381-392 (negative blobs)
+  - Uses the Hungarian algorithm via `_solve_assignment_problem()` at line 34
+  
+- `calculate_bottleneck()` (lines 452-503): Computes the bottleneck distance and matching
+  - Similar to Wasserstein but instead of summing, it finds the maximum distance at lines 501-502
+  
+- `calculate_height_wasserstein_plan()` (lines 173-261): Computes the height-based Wasserstein distance
+  - The matching algorithm is implemented in lines 210-261 with separate logic for positive heights (213-266) and negative heights (268-291)
+  
+- `calculate_height_bottleneck_plan()` (lines 118-172): Computes the height-based bottleneck distance
+  - The matching algorithm is implemented in lines 155-203 with the max difference calculated in lines 160 and 200
+
+Additionally, the following helper methods are useful for validation:
+
+- `get_distance_matrix()` (lines 507-543): Generates the raw distance matrices used in calculations
+- `explain_matching()` (lines 545-586): Creates human-readable explanations of matchings
 
 ### Step 2: Manual Calculation for Simple Examples
 

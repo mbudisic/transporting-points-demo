@@ -4,7 +4,7 @@ This guide will help you deploy the Distribution Distance Visualization applicat
 
 ## Prerequisites
 
-- Python 3.10 or higher
+- Python 3.11 or higher (required by the project)
 - Git (to clone the repository)
 
 ## Step 1: Clone the Repository
@@ -32,7 +32,9 @@ curl -sSf https://astral.sh/uv/install.ps1 | powershell
 curl -sSf https://astral.sh/uv/install.sh | bash
 ```
 
-## Step 3: Create a Virtual Environment and Install Dependencies
+## Step 3: Create a Virtual Environment and Install Dependencies using pyproject.toml
+
+The project uses a `pyproject.toml` file to define its dependencies, which makes installation more reliable.
 
 ```bash
 # Create a virtual environment
@@ -44,9 +46,11 @@ uv venv .venv
 # On macOS/Linux:
 source .venv/bin/activate
 
-# Install dependencies
-uv pip install networkx numpy pandas plotly pot scipy streamlit
+# Install dependencies from pyproject.toml
+uv pip sync
 ```
+
+This command will analyze the `pyproject.toml` file and install all the required dependencies with their correct versions.
 
 ## Step 4: Run the Application
 
@@ -60,9 +64,25 @@ This will start the application and open it in your default web browser. If it d
 
 If you need to update the application's dependencies in the future:
 
+### Method 1: Using pyproject.toml
+
+If the project's `pyproject.toml` file has been updated:
+
 ```bash
 # Make sure your virtual environment is activated
-uv pip install --upgrade networkx numpy pandas plotly pot scipy streamlit
+uv pip sync
+```
+
+### Method 2: Manual Update
+
+If you need to update specific packages:
+
+```bash
+# Make sure your virtual environment is activated
+uv pip install --upgrade <package-name>
+
+# Example:
+uv pip install --upgrade streamlit
 ```
 
 ## Troubleshooting
