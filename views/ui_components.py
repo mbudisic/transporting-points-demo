@@ -689,27 +689,44 @@ class UIComponents:
             
             # Style the DataFrame based on matching pairs
             def highlight_cells(val, row_name, col_name):
-                # Extract indices from row/col names (format: "A{id}" and "B{id}")
-                row_id = int(row_name[1:])
-                col_id = int(col_name[1:])
+                # If either row_name or col_name is None, return empty style
+                if row_name is None or col_name is None:
+                    return ''
                 
-                # Find the actual blob IDs
-                row_blob_id = pos_blobs_a[row_labels.index(row_name)].id
-                col_blob_id = pos_blobs_b[col_labels.index(col_name)].id
+                try:
+                    # Extract indices from row/col names (format: "A{id}" and "B{id}")
+                    row_id = int(row_name[1:])
+                    col_id = int(col_name[1:])
+                    
+                    # Find the actual blob IDs
+                    row_blob_id = pos_blobs_a[row_labels.index(row_name)].id
+                    col_blob_id = pos_blobs_b[col_labels.index(col_name)].id
+                    
+                    # Check if this pair is in the matching
+                    if (row_blob_id, col_blob_id) in highlight_pairs:
+                        return 'font-weight: bold; background-color: rgba(255, 255, 0, 0.3)'
+                except (IndexError, ValueError, KeyError):
+                    # Handle any exceptions that might occur during indexing
+                    pass
                 
-                # Check if this pair is in the matching
-                if (row_blob_id, col_blob_id) in highlight_pairs:
-                    return 'font-weight: bold; background-color: rgba(255, 255, 0, 0.3)'
                 return ''
             
-            # Apply styling
-            styled_pos_df = pos_df.style.format("{:.4f}").apply(lambda x: 
-                            [highlight_cells(x.iloc[i, j], x.index[i], x.columns[j]) 
-                             for i in range(len(x)) for j in range(len(x.columns))], 
-                            axis=None).set_table_styles([
-                                {'selector': 'th', 'props': [('font-weight', 'bold')]},
-                                {'selector': 'td', 'props': [('text-align', 'center')]}
-                            ])
+            # Apply styling using a simpler approach
+            styled_pos_df = pos_df.style.format("{:.4f}")
+            
+            # Define a function to apply styling to each cell
+            def apply_styles(df_styler):
+                for i, row_idx in enumerate(pos_df.index):
+                    for j, col_idx in enumerate(pos_df.columns):
+                        style = highlight_cells(pos_df.iloc[i, j], row_idx, col_idx)
+                        if style:
+                            df_styler.applymap(lambda x: style, subset=pd.IndexSlice[row_idx, col_idx])
+                return df_styler
+            
+            styled_pos_df = apply_styles(styled_pos_df).set_table_styles([
+                {'selector': 'th', 'props': [('font-weight', 'bold')]},
+                {'selector': 'td', 'props': [('text-align', 'center')]}
+            ])
             
             # Display the table
             st.dataframe(styled_pos_df)
@@ -739,27 +756,44 @@ class UIComponents:
             
             # Style the DataFrame based on matching pairs
             def highlight_cells(val, row_name, col_name):
-                # Extract indices from row/col names (format: "A{id}" and "B{id}")
-                row_id = int(row_name[1:])
-                col_id = int(col_name[1:])
+                # If either row_name or col_name is None, return empty style
+                if row_name is None or col_name is None:
+                    return ''
                 
-                # Find the actual blob IDs
-                row_blob_id = neg_blobs_a[row_labels.index(row_name)].id
-                col_blob_id = neg_blobs_b[col_labels.index(col_name)].id
+                try:
+                    # Extract indices from row/col names (format: "A{id}" and "B{id}")
+                    row_id = int(row_name[1:])
+                    col_id = int(col_name[1:])
+                    
+                    # Find the actual blob IDs
+                    row_blob_id = neg_blobs_a[row_labels.index(row_name)].id
+                    col_blob_id = neg_blobs_b[col_labels.index(col_name)].id
+                    
+                    # Check if this pair is in the matching
+                    if (row_blob_id, col_blob_id) in highlight_pairs:
+                        return 'font-weight: bold; background-color: rgba(255, 255, 0, 0.3)'
+                except (IndexError, ValueError, KeyError):
+                    # Handle any exceptions that might occur during indexing
+                    pass
                 
-                # Check if this pair is in the matching
-                if (row_blob_id, col_blob_id) in highlight_pairs:
-                    return 'font-weight: bold; background-color: rgba(255, 255, 0, 0.3)'
                 return ''
             
-            # Apply styling
-            styled_neg_df = neg_df.style.format("{:.4f}").apply(lambda x: 
-                            [highlight_cells(x.iloc[i, j], x.index[i], x.columns[j]) 
-                             for i in range(len(x)) for j in range(len(x.columns))], 
-                            axis=None).set_table_styles([
-                                {'selector': 'th', 'props': [('font-weight', 'bold')]},
-                                {'selector': 'td', 'props': [('text-align', 'center')]}
-                            ])
+            # Apply styling using a simpler approach
+            styled_neg_df = neg_df.style.format("{:.4f}")
+            
+            # Define a function to apply styling to each cell
+            def apply_styles(df_styler):
+                for i, row_idx in enumerate(neg_df.index):
+                    for j, col_idx in enumerate(neg_df.columns):
+                        style = highlight_cells(neg_df.iloc[i, j], row_idx, col_idx)
+                        if style:
+                            df_styler.applymap(lambda x: style, subset=pd.IndexSlice[row_idx, col_idx])
+                return df_styler
+            
+            styled_neg_df = apply_styles(styled_neg_df).set_table_styles([
+                {'selector': 'th', 'props': [('font-weight', 'bold')]},
+                {'selector': 'td', 'props': [('text-align', 'center')]}
+            ])
             
             # Display the table
             st.dataframe(styled_neg_df)
