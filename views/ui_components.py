@@ -338,10 +338,7 @@ class UIComponents:
                     with x_label:
                         st.markdown("X:")
                     with x_slider:
-                        # Set the session state value first
-                        st.session_state[f"x_slider_B{blob_id}"] = float(blob.x)
-                        
-                        # Then create the slider with that value
+                        # Create slider with default value
                         new_x = st.slider(
                             "##", 
                             min_value=0.0, 
@@ -351,7 +348,7 @@ class UIComponents:
                             key=f"x_slider_B{blob_id}",
                             on_change=lambda: DistributionController.update_blob(
                                 distribution, blob_id, 
-                                x=st.session_state[f"x_slider_B{blob_id}"]
+                                x=st.session_state.get(f"x_slider_B{blob_id}", blob.x)
                             )
                         )
                     
@@ -361,10 +358,7 @@ class UIComponents:
                     with y_label:
                         st.markdown("Y:")
                     with y_slider:
-                        # Set the session state value first 
-                        st.session_state[f"y_slider_B{blob_id}"] = float(blob.y)
-                        
-                        # Then create the slider with that value
+                        # Create slider with default value
                         new_y = st.slider(
                             "##", 
                             min_value=0.0, 
@@ -374,7 +368,7 @@ class UIComponents:
                             key=f"y_slider_B{blob_id}",
                             on_change=lambda: DistributionController.update_blob(
                                 distribution, blob_id, 
-                                y=st.session_state[f"y_slider_B{blob_id}"]
+                                y=st.session_state.get(f"y_slider_B{blob_id}", blob.y)
                             )
                         )
                     
@@ -384,10 +378,7 @@ class UIComponents:
                     with var_label:
                         st.markdown("Var:")
                     with var_slider:
-                        # Set the session state value first
-                        st.session_state[f"var_slider_B{blob_id}"] = float(blob.variance)
-                        
-                        # Then create the slider with that value
+                        # Create slider with default value
                         new_variance = st.slider(
                             "##", 
                             min_value=0.1, 
@@ -397,7 +388,7 @@ class UIComponents:
                             key=f"var_slider_B{blob_id}",
                             on_change=lambda: DistributionController.update_blob(
                                 distribution, blob_id, 
-                                variance=st.session_state[f"var_slider_B{blob_id}"]
+                                variance=st.session_state.get(f"var_slider_B{blob_id}", blob.variance)
                             )
                         )
                     
@@ -407,9 +398,6 @@ class UIComponents:
                     with height_label:
                         st.markdown("Height:")
                     with height_slider:
-                        # Set the session state value directly with the signed height
-                        st.session_state[f"height_slider_B{blob_id}"] = float(blob.height)
-                        
                         # Create height slider that allows for negative values (double-sided)
                         new_height = st.slider(
                             "##", 
@@ -420,7 +408,7 @@ class UIComponents:
                             key=f"height_slider_B{blob_id}",
                             on_change=lambda: DistributionController.update_blob(
                                 distribution, blob_id, 
-                                height=st.session_state[f"height_slider_B{blob_id}"]
+                                height=st.session_state.get(f"height_slider_B{blob_id}", blob.height)
                             )
                         )
                 else:
@@ -459,23 +447,58 @@ class UIComponents:
             handle_drag_event: Function to handle plot drag events
             visualization_service: Service for creating visualizations
         """
-        # Display control buttons in a row
-        col1, col2, col3 = st.columns(3)
+        # Define transport plan options at the top level
+        transport_options = [
+            {"label": "Hide Transportation Plans", "value": "hide"},
+            {"label": "Spatial Bottleneck", "value": "bottleneck_spatial"},
+            {"label": "Spatial Wasserstein", "value": "wasserstein_spatial"},
+            {"label": "Height-Based Bottleneck", "value": "bottleneck_height"},
+            {"label": "Height-Based Wasserstein", "value": "wasserstein_height"}
+        ]
+        
+        # Map state to option value
+        current_value = "hide"  # Default
+        if AppState.is_showing_bottleneck():
+            current_value = "bottleneck_spatial"
+        elif AppState.is_showing_wasserstein():
+            current_value = "wasserstein_spatial"
+        elif AppState.is_showing_height_bottleneck():
+            current_value = "bottleneck_height"
+        elif AppState.is_showing_height_wasserstein():
+            current_value = "wasserstein_height"
+        
+        # Create map of labels to values for lookup
+        option_map = {opt["label"]: opt["value"] for opt in transport_options}
+        option_labels = [opt["label"] for opt in transport_options]
+        
+        # Find the current index
+        current_index = 0
+        for i, opt in enumerate(transport_options):
+            if opt["value"] == current_value:
+                current_index = i
+                break
+        
+        # Display at the top: transport plan selection dropdown and view toggle
+        col1, col2 = st.columns([3, 1])
+        
         with col1:
-            active_a = AppState.get_active_distribution() == 'A'
-            if st.button("Edit Distribution A", type="primary" if active_a else "secondary"):
-                AppState.toggle_active_distribution('A')
+            # Display dropdown for transport plan selection
+            transport_selection = st.selectbox(
+                "Select Transportation Plan Visualization",
+                options=option_labels,
+                index=current_index,
+                key="transport_plan_dropdown"
+            )
+            
+            # Update visualization based on selection
+            selected_value = option_map[transport_selection]
+            if selected_value != current_value:
+                AppState.set_transport_visualization(selected_value)
                 on_update()
         
         with col2:
-            active_b = AppState.get_active_distribution() == 'B'
-            if st.button("Edit Distribution B", type="primary" if active_b else "secondary"):
-                AppState.toggle_active_distribution('B')
-                on_update()
-        
-        with col3:
             show_both = AppState.is_showing_both()
-            if st.button("Toggle View " + ("Both" if show_both else "Active Only")):
+            if st.button("Toggle " + ("Both" if show_both else "Active Only")):
                 AppState.toggle_show_both()
                 on_update()
         
@@ -526,103 +549,76 @@ class UIComponents:
         has_b = not distribution_b.is_empty
         
         if has_a and has_b:
-            # Calculate distances based on spatial positions
+            # Calculate all distances
             wasserstein_continuous = calculator.calculate_wasserstein_continuous(distribution_a, distribution_b)
-            wasserstein_discrete = calculator.calculate_wasserstein_discrete(distribution_a, distribution_b)
+            wasserstein_discrete, wasserstein_pairs = calculator.calculate_wasserstein_plan(distribution_a, distribution_b)
             bottleneck_value, bottleneck_pairs = calculator.calculate_bottleneck(distribution_a, distribution_b)
             
             # Calculate distances based on heights only
-            wasserstein_heights = calculator.calculate_wasserstein_by_heights(distribution_a, distribution_b)
-            bottleneck_heights = calculator.calculate_bottleneck_by_heights(distribution_a, distribution_b)
+            wasserstein_heights, height_wasserstein_pairs = calculator.calculate_height_wasserstein_plan(distribution_a, distribution_b)
+            bottleneck_heights, height_bottleneck_pairs = calculator.calculate_height_bottleneck_plan(distribution_a, distribution_b)
             
-            # Store the bottleneck matching in session state for visualization
+            # Store all transportation plans in session state for visualization
             AppState.store_bottleneck_matching(bottleneck_pairs)
+            AppState.store_wasserstein_pairs(wasserstein_pairs)
+            AppState.store_height_wasserstein_pairs(height_wasserstein_pairs)
+            AppState.store_height_bottleneck_matching(height_bottleneck_pairs)
             
-            # Display spatial metrics in a box
-            st.markdown("### Spatial Distribution Distances")
-            metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
+            # Determine which transport plan is currently selected
+            current_plan = "hide"
+            if AppState.is_showing_bottleneck():
+                current_plan = "bottleneck_spatial"
+            elif AppState.is_showing_wasserstein():
+                current_plan = "wasserstein_spatial"
+            elif AppState.is_showing_height_bottleneck():
+                current_plan = "bottleneck_height"
+            elif AppState.is_showing_height_wasserstein():
+                current_plan = "wasserstein_height"
             
-            with metrics_col1:
-                st.metric("Wasserstein (Continuous)", f"{wasserstein_continuous:.4f}")
-                st.info("Measures minimum 'cost' of transforming one continuous distribution into another.")
+            # Display only the selected metric
+            if current_plan != "hide":
+                st.markdown("### Selected Distance Metric")
                 
-            with metrics_col2:
-                st.metric("Wasserstein (Centers)", f"{wasserstein_discrete:.4f}")
-                st.info("Measures minimum 'cost' of transforming centers of one distribution into another.")
-                
-            with metrics_col3:
-                st.metric("Bottleneck Distance", f"{bottleneck_value:.4f}")
-                st.info("Largest minimum distance to transform one distribution into another.")
+                if current_plan == "bottleneck_spatial":
+                    st.metric("Spatial Bottleneck Distance", f"{bottleneck_value:.4f}")
+                    st.info("Largest minimum distance between points when transforming one distribution into another.")
+                    
+                elif current_plan == "wasserstein_spatial":
+                    st.metric("Spatial Wasserstein Distance", f"{wasserstein_discrete:.4f}")
+                    st.info("Minimum 'cost' of transforming centers of one distribution into another, based on spatial positions.")
+                    
+                elif current_plan == "bottleneck_height":
+                    st.metric("Height-Based Bottleneck Distance", f"{bottleneck_heights:.4f}")
+                    st.info("Maximum difference between sorted heights, ignoring spatial positions.")
+                    
+                elif current_plan == "wasserstein_height":
+                    st.metric("Height-Based Wasserstein Distance", f"{wasserstein_heights:.4f}")
+                    st.info("Minimum 'cost' of transforming heights, ignoring spatial positions.")
             
-            # Display height-based metrics in a separate box
-            st.markdown("### Height-Based Distances")
-            height_col1, height_col2 = st.columns(2)
-            
-            with height_col1:
-                st.metric("Wasserstein (Heights)", f"{wasserstein_heights:.4f}")
-                st.info("Measures minimum 'cost' of transforming heights, ignoring positions.")
+            # Additional metrics with collapsible sections
+            with st.expander("Show All Distance Metrics"):
+                # Display spatial metrics
+                st.markdown("#### Spatial Distribution Distances")
+                col1, col2, col3 = st.columns(3)
                 
-            with height_col2:
-                st.metric("Bottleneck (Heights)", f"{bottleneck_heights:.4f}")
-                st.info("Maximum difference between sorted heights, ignoring positions.")
+                with col1:
+                    st.metric("Wasserstein (Continuous)", f"{wasserstein_continuous:.4f}")
+                    
+                with col2:
+                    st.metric("Wasserstein (Centers)", f"{wasserstein_discrete:.4f}")
+                    
+                with col3:
+                    st.metric("Bottleneck Distance", f"{bottleneck_value:.4f}")
                 
-                # Calculate all transportation plans
-                # Spatial transport plan for Wasserstein
-                wasserstein_value, wasserstein_pairs = calculator.calculate_wasserstein_plan(distribution_a, distribution_b)
-                AppState.store_wasserstein_pairs(wasserstein_pairs)
+                # Display height-based metrics
+                st.markdown("#### Height-Based Distances")
+                col1, col2 = st.columns(2)
                 
-                # Height-based transportation plans
-                height_wasserstein_value, height_wasserstein_pairs = calculator.calculate_height_wasserstein_plan(distribution_a, distribution_b)
-                AppState.store_height_wasserstein_pairs(height_wasserstein_pairs)
-                
-                height_bottleneck_value, height_bottleneck_pairs = calculator.calculate_height_bottleneck_plan(distribution_a, distribution_b)
-                AppState.store_height_bottleneck_matching(height_bottleneck_pairs)
-                
-                # Transport plan visualization with dropdown
-                st.markdown("#### Transport Plan Visualization")
-                transport_options = [
-                    {"label": "Hide Transportation Plans", "value": "hide"},
-                    {"label": "Spatial Bottleneck", "value": "bottleneck_spatial"},
-                    {"label": "Spatial Wasserstein", "value": "wasserstein_spatial"},
-                    {"label": "Height-Based Bottleneck", "value": "bottleneck_height"},
-                    {"label": "Height-Based Wasserstein", "value": "wasserstein_height"}
-                ]
-                
-                # Map state to option value
-                current_value = "hide"  # Default
-                if AppState.is_showing_bottleneck():
-                    current_value = "bottleneck_spatial"
-                elif AppState.is_showing_wasserstein():
-                    current_value = "wasserstein_spatial"
-                elif AppState.is_showing_height_bottleneck():
-                    current_value = "bottleneck_height"
-                elif AppState.is_showing_height_wasserstein():
-                    current_value = "wasserstein_height"
-                
-                # Create map of labels to values for lookup
-                option_map = {opt["label"]: opt["value"] for opt in transport_options}
-                option_labels = [opt["label"] for opt in transport_options]
-                
-                # Find the current index
-                current_index = 0
-                for i, opt in enumerate(transport_options):
-                    if opt["value"] == current_value:
-                        current_index = i
-                        break
-                
-                # Display dropdown for transport plan selection
-                transport_selection = st.selectbox(
-                    "Select visualization type",
-                    options=option_labels,
-                    index=current_index,
-                    key="transport_plan_dropdown"
-                )
-                
-                # Update visualization based on selection
-                selected_value = option_map[transport_selection]
-                if selected_value != current_value:
-                    AppState.set_transport_visualization(selected_value)
-                    on_update()
+                with col1:
+                    st.metric("Wasserstein (Heights)", f"{wasserstein_heights:.4f}")
+                    
+                with col2:
+                    st.metric("Bottleneck (Heights)", f"{bottleneck_heights:.4f}")
         else:
             st.warning("Add blobs to both distributions to calculate distances.")
     
