@@ -314,8 +314,12 @@ class POTDistanceCalculator:
             a = a / np.sum(a)
             b = b / np.sum(b)
             
-            # Calculate optimal transport plan
-            transport_plan = ot.sinkhorn(a, b, cost_matrix, regularization)
+            # Calculate optimal transport plan using the exact EMD solver (more robust than Sinkhorn)
+            transport_plan = ot.emd(a, b, cost_matrix)
+            
+            # Calculate the Wasserstein distance
+            wasserstein_dist = np.sum(transport_plan * cost_matrix)
+            total_distance += wasserstein_dist
             
             # Add matching pairs to result
             for i in range(len(pos_blobs_a)):
@@ -324,7 +328,6 @@ class POTDistanceCalculator:
                         orig_idx_a = pos_indices_a[i]
                         orig_idx_b = pos_indices_b[j]
                         pairs.append((orig_idx_a, orig_idx_b, float(transport_plan[i, j])))
-                        total_distance += cost_matrix[i, j] * transport_plan[i, j]
         
         # Process negative blobs
         if neg_blobs_a and neg_blobs_b:
@@ -339,8 +342,12 @@ class POTDistanceCalculator:
             a = a / np.sum(a)
             b = b / np.sum(b)
             
-            # Calculate optimal transport plan
-            transport_plan = ot.sinkhorn(a, b, cost_matrix, regularization)
+            # Calculate optimal transport plan using the exact EMD solver (more robust than Sinkhorn)
+            transport_plan = ot.emd(a, b, cost_matrix)
+            
+            # Calculate the Wasserstein distance
+            wasserstein_dist = np.sum(transport_plan * cost_matrix)
+            total_distance += wasserstein_dist
             
             # Add matching pairs to result
             for i in range(len(neg_blobs_a)):
@@ -349,7 +356,6 @@ class POTDistanceCalculator:
                         orig_idx_a = neg_indices_a[i]
                         orig_idx_b = neg_indices_b[j]
                         pairs.append((orig_idx_a, orig_idx_b, float(transport_plan[i, j])))
-                        total_distance += cost_matrix[i, j] * transport_plan[i, j]
         
         return total_distance, pairs
     
