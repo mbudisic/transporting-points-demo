@@ -2,7 +2,7 @@
 
 An interactive educational visualization platform for exploring distance metrics between mathematical distributions through dynamic, engaging 2D probability simulations.
 
-![Application Screenshot](generated-icon.png)
+![Application Screenshot](assets/app_screenshot.svg)
 
 ## Overview
 
@@ -58,7 +58,8 @@ See the [Deployment Guide](DEPLOYMENT.md) for detailed installation instructions
 # Quick start
 git clone <repository-url>
 cd <repository-directory>
-pip install -r requirements.txt
+pip install uv
+uv pip install --resolution highest -e .
 streamlit run app_mvc.py
 ```
 
