@@ -1,5 +1,5 @@
 import numpy as np
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Callable
 from models.distribution import Distribution
 import scipy.spatial.distance as dist
 import scipy.optimize as opt
@@ -9,6 +9,38 @@ class DistanceCalculator:
     """
     Controller class for calculating distances between distributions
     """
+    
+    # Common utility functions for distance calculations
+    
+    @staticmethod
+    def _euclidean_distance(point1: Tuple[float, float], point2: Tuple[float, float]) -> float:
+        """Calculate Euclidean distance between two points"""
+        return np.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
+    
+    @staticmethod
+    def _create_distance_matrix(centers_a: List[Tuple[float, float]], centers_b: List[Tuple[float, float]]) -> np.ndarray:
+        """Create a distance matrix between two sets of centers"""
+        n_a = len(centers_a)
+        n_b = len(centers_b)
+        cost_matrix = np.zeros((n_a, n_b))
+        
+        for i in range(n_a):
+            for j in range(n_b):
+                cost_matrix[i, j] = DistanceCalculator._euclidean_distance(centers_a[i], centers_b[j])
+                
+        return cost_matrix
+    
+    @staticmethod
+    def _solve_assignment_problem(cost_matrix: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Solve the assignment problem using the Hungarian algorithm"""
+        return opt.linear_sum_assignment(cost_matrix)
+    
+    @staticmethod
+    def _separate_by_sign(blobs, get_value_fn: Callable = lambda b: b.height):
+        """Separate blobs by sign (positive/negative)"""
+        positive = [(i, b) for i, b in enumerate(blobs) if get_value_fn(b) > 0]
+        negative = [(i, b) for i, b in enumerate(blobs) if get_value_fn(b) < 0]
+        return positive, negative
     @staticmethod
     def calculate_wasserstein_continuous(dist_a: Distribution, dist_b: Distribution, 
                                         grid_size: int = 100) -> float:
@@ -469,3 +501,86 @@ class DistanceCalculator:
                 max_distance = max(max_distance, cost_matrix[i, j])
         
         return max_distance, matching_pairs
+    
+    # ---------- Helper Methods for Mathematical Validation ----------
+    
+    @staticmethod
+    def get_distance_matrix(dist_a: Distribution, dist_b: Distribution, 
+                           metric: str = 'spatial') -> Tuple[np.ndarray, List[int], List[int]]:
+        """
+        Generate a distance matrix between blobs from two distributions.
+        Useful for validating the calculations manually.
+        
+        Args:
+            dist_a: First distribution
+            dist_b: Second distribution
+            metric: 'spatial' for Euclidean distance or 'height' for height differences
+            
+        Returns:
+            Tuple containing (distance_matrix, blob_indices_a, blob_indices_b)
+        """
+        blobs_a = dist_a.blobs
+        blobs_b = dist_b.blobs
+        
+        if not blobs_a or not blobs_b:
+            return np.array([]), [], []
+        
+        indices_a = list(range(len(blobs_a)))
+        indices_b = list(range(len(blobs_b)))
+        
+        if metric == 'spatial':
+            # Create distance matrix based on spatial distances
+            centers_a = [blobs_a[i].center for i in indices_a]
+            centers_b = [blobs_b[i].center for i in indices_b]
+            distance_matrix = DistanceCalculator._create_distance_matrix(centers_a, centers_b)
+        else:  # 'height'
+            # Create distance matrix based on height differences
+            distance_matrix = np.zeros((len(indices_a), len(indices_b)))
+            for i, idx_a in enumerate(indices_a):
+                for j, idx_b in enumerate(indices_b):
+                    distance_matrix[i, j] = abs(blobs_a[idx_a].height - blobs_b[idx_b].height)
+        
+        return distance_matrix, indices_a, indices_b
+    
+    @staticmethod
+    def explain_matching(dist_a: Distribution, dist_b: Distribution, 
+                        matching_pairs: List[Tuple[int, int]], 
+                        weights: Optional[List[float]] = None) -> List[Dict]:
+        """
+        Create a human-readable explanation of a matching between two distributions.
+        Useful for validating the calculations and understanding the results.
+        
+        Args:
+            dist_a: First distribution
+            dist_b: Second distribution
+            matching_pairs: List of pairs (idx_a, idx_b) indicating the matching
+            weights: Optional list of weights for Wasserstein transport
+            
+        Returns:
+            List of dictionaries with detailed information about each match
+        """
+        if weights is None:
+            weights = [1.0] * len(matching_pairs)
+            
+        explanations = []
+        
+        for (idx_a, idx_b), weight in zip(matching_pairs, weights):
+            blob_a = dist_a.blobs[idx_a]
+            blob_b = dist_b.blobs[idx_b]
+            
+            spatial_distance = DistanceCalculator._euclidean_distance(blob_a.center, blob_b.center)
+            height_distance = abs(blob_a.height - blob_b.height)
+            
+            explanations.append({
+                'blob_a_id': idx_a,
+                'blob_b_id': idx_b,
+                'blob_a_position': blob_a.center,
+                'blob_b_position': blob_b.center,
+                'blob_a_height': blob_a.height,
+                'blob_b_height': blob_b.height,
+                'spatial_distance': spatial_distance,
+                'height_distance': height_distance,
+                'weight': weight
+            })
+        
+        return explanations
