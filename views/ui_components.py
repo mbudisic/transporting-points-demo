@@ -513,11 +513,11 @@ class UIComponents:
             # Display dropdown for transport plan selection
             st.markdown("### Transportation Plan")
             transport_selection = st.selectbox(
-                "",  # Empty label to make it more compact
+                "Transport Plan",  # Provide a proper label for accessibility
                 options=option_labels,
                 index=current_index,
                 key="transport_plan_dropdown",
-                label_visibility="collapsed"  # Hide the label completely
+                label_visibility="collapsed"  # Hide the label completely but keep it for screen readers
             )
             
             # Get the description for the selected option
@@ -545,16 +545,16 @@ class UIComponents:
                 st.markdown("### Distance Value")
                 
                 if selected_value == "bottleneck_spatial":
-                    st.metric("", f"{bottleneck_value:.4f}")
+                    st.metric("Bottleneck Value", f"{bottleneck_value:.4f}", help="Spatial bottleneck distance")
                 elif selected_value == "wasserstein_spatial":
-                    st.metric("", f"{wasserstein_discrete:.4f}")
+                    st.metric("Wasserstein Value", f"{wasserstein_discrete:.4f}", help="Spatial Wasserstein distance")
                 elif selected_value == "bottleneck_height":
-                    st.metric("", f"{bottleneck_heights:.4f}")
+                    st.metric("Height Bottleneck Value", f"{bottleneck_heights:.4f}", help="Height-based bottleneck distance")
                 elif selected_value == "wasserstein_height":
-                    st.metric("", f"{wasserstein_heights:.4f}")
+                    st.metric("Height Wasserstein Value", f"{wasserstein_heights:.4f}", help="Height-based Wasserstein distance")
             elif not distribution_a.is_empty and not distribution_b.is_empty:
                 st.markdown("### Distance Value")
-                st.metric("", "—")  # Display a dash when no plan is selected
+                st.metric("No Transport Plan Selected", "—", help="Select a transport plan to see the distance metric")  # Display a dash when no plan is selected
             else:
                 st.markdown("### Distance Value")
                 st.info("Add blobs to both distributions to calculate distances.")
@@ -593,6 +593,155 @@ class UIComponents:
             on_click=handle_plot_click,
             on_dragend=handle_drag_event
         )
+    
+    @staticmethod
+    def render_distance_matrices(distribution_a: Distribution, distribution_b: Distribution, 
+                               calculator, current_transport_mode: str):
+        """
+        Render tables of all-to-all distances between blobs based on the selected transport mode
+        
+        Args:
+            distribution_a: Distribution A
+            distribution_b: Distribution B
+            calculator: Calculator for computing distances
+            current_transport_mode: Current transport visualization mode
+                (bottleneck_spatial, wasserstein_spatial, bottleneck_height, wasserstein_height, hide)
+        """
+        if distribution_a.is_empty or distribution_b.is_empty or current_transport_mode == 'hide':
+            return
+            
+        st.markdown("### Distance Matrices")
+        st.markdown("The following tables show the distances used in computing the transportation plan.")
+        
+        # Split positive and negative blobs
+        pos_blobs_a = [b for b in distribution_a.blobs if b.height > 0]
+        neg_blobs_a = [b for b in distribution_a.blobs if b.height < 0]
+        pos_blobs_b = [b for b in distribution_b.blobs if b.height > 0]
+        neg_blobs_b = [b for b in distribution_b.blobs if b.height < 0]
+        
+        # Get the appropriate matching pairs based on the transport mode
+        matching_pairs = []
+        is_bottleneck = False
+        
+        if current_transport_mode == 'bottleneck_spatial':
+            _, matching_pairs = calculator.calculate_bottleneck(distribution_a, distribution_b)
+            is_bottleneck = True
+        elif current_transport_mode == 'wasserstein_spatial':
+            _, matching_pairs = calculator.calculate_wasserstein_plan(distribution_a, distribution_b)
+        elif current_transport_mode == 'bottleneck_height':
+            _, matching_pairs = calculator.calculate_height_bottleneck_plan(distribution_a, distribution_b)
+            is_bottleneck = True
+        elif current_transport_mode == 'wasserstein_height':
+            _, matching_pairs = calculator.calculate_height_wasserstein_plan(distribution_a, distribution_b)
+            
+        # Convert matching pairs to a format for highlighting in tables
+        highlight_pairs = {}
+        if is_bottleneck:
+            for idx_a, idx_b in matching_pairs:
+                highlight_pairs[(idx_a, idx_b)] = True
+        else:  # Wasserstein
+            for idx_a, idx_b, _ in matching_pairs:
+                highlight_pairs[(idx_a, idx_b)] = True
+        
+        # Calculate and display distance matrices
+        if pos_blobs_a and pos_blobs_b:
+            st.markdown("#### Positive-to-Positive Distances")
+            
+            # Create the distance matrix for positive blobs
+            if current_transport_mode in ['bottleneck_spatial', 'wasserstein_spatial']:
+                # Spatial distances
+                distance_matrix = np.zeros((len(pos_blobs_a), len(pos_blobs_b)))
+                for i, blob_a in enumerate(pos_blobs_a):
+                    for j, blob_b in enumerate(pos_blobs_b):
+                        distance_matrix[i, j] = np.sqrt((blob_a.x - blob_b.x)**2 + (blob_a.y - blob_b.y)**2)
+            else:
+                # Height-based distances
+                distance_matrix = np.zeros((len(pos_blobs_a), len(pos_blobs_b)))
+                for i, blob_a in enumerate(pos_blobs_a):
+                    for j, blob_b in enumerate(pos_blobs_b):
+                        distance_matrix[i, j] = abs(blob_a.height - blob_b.height)
+                        
+            # Create DataFrame for the table
+            col_labels = [f"B{b.id}" for b in pos_blobs_b]
+            row_labels = [f"A{b.id}" for b in pos_blobs_a]
+            pos_df = pd.DataFrame(distance_matrix, columns=col_labels, index=row_labels)
+            
+            # Style the DataFrame based on matching pairs
+            def highlight_cells(val, row_name, col_name):
+                # Extract indices from row/col names (format: "A{id}" and "B{id}")
+                row_id = int(row_name[1:])
+                col_id = int(col_name[1:])
+                
+                # Find the actual blob IDs
+                row_blob_id = pos_blobs_a[row_labels.index(row_name)].id
+                col_blob_id = pos_blobs_b[col_labels.index(col_name)].id
+                
+                # Check if this pair is in the matching
+                if (row_blob_id, col_blob_id) in highlight_pairs:
+                    return 'font-weight: bold; background-color: rgba(255, 255, 0, 0.3)'
+                return ''
+            
+            # Apply styling
+            styled_pos_df = pos_df.style.format("{:.4f}").apply(lambda x: 
+                            [highlight_cells(x.iloc[i, j], x.index[i], x.columns[j]) 
+                             for i in range(len(x)) for j in range(len(x.columns))], 
+                            axis=None).set_table_styles([
+                                {'selector': 'th', 'props': [('font-weight', 'bold')]},
+                                {'selector': 'td', 'props': [('text-align', 'center')]}
+                            ])
+            
+            # Display the table
+            st.dataframe(styled_pos_df)
+            
+        # Similar logic for negative blobs
+        if neg_blobs_a and neg_blobs_b:
+            st.markdown("#### Negative-to-Negative Distances")
+            
+            # Create the distance matrix for negative blobs
+            if current_transport_mode in ['bottleneck_spatial', 'wasserstein_spatial']:
+                # Spatial distances
+                distance_matrix = np.zeros((len(neg_blobs_a), len(neg_blobs_b)))
+                for i, blob_a in enumerate(neg_blobs_a):
+                    for j, blob_b in enumerate(neg_blobs_b):
+                        distance_matrix[i, j] = np.sqrt((blob_a.x - blob_b.x)**2 + (blob_a.y - blob_b.y)**2)
+            else:
+                # Height-based distances
+                distance_matrix = np.zeros((len(neg_blobs_a), len(neg_blobs_b)))
+                for i, blob_a in enumerate(neg_blobs_a):
+                    for j, blob_b in enumerate(neg_blobs_b):
+                        distance_matrix[i, j] = abs(blob_a.height - blob_b.height)
+                        
+            # Create DataFrame for the table
+            col_labels = [f"B{b.id}" for b in neg_blobs_b]
+            row_labels = [f"A{b.id}" for b in neg_blobs_a]
+            neg_df = pd.DataFrame(distance_matrix, columns=col_labels, index=row_labels)
+            
+            # Style the DataFrame based on matching pairs
+            def highlight_cells(val, row_name, col_name):
+                # Extract indices from row/col names (format: "A{id}" and "B{id}")
+                row_id = int(row_name[1:])
+                col_id = int(col_name[1:])
+                
+                # Find the actual blob IDs
+                row_blob_id = neg_blobs_a[row_labels.index(row_name)].id
+                col_blob_id = neg_blobs_b[col_labels.index(col_name)].id
+                
+                # Check if this pair is in the matching
+                if (row_blob_id, col_blob_id) in highlight_pairs:
+                    return 'font-weight: bold; background-color: rgba(255, 255, 0, 0.3)'
+                return ''
+            
+            # Apply styling
+            styled_neg_df = neg_df.style.format("{:.4f}").apply(lambda x: 
+                            [highlight_cells(x.iloc[i, j], x.index[i], x.columns[j]) 
+                             for i in range(len(x)) for j in range(len(x.columns))], 
+                            axis=None).set_table_styles([
+                                {'selector': 'th', 'props': [('font-weight', 'bold')]},
+                                {'selector': 'td', 'props': [('text-align', 'center')]}
+                            ])
+            
+            # Display the table
+            st.dataframe(styled_neg_df)
     
     @staticmethod
     def render_metrics(distribution_a: Distribution, distribution_b: Distribution, calculator, on_update: Callable):

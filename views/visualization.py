@@ -7,6 +7,8 @@ class VisualizationService:
     """
     Service for visualizing distributions and transport plans
     """
+    
+    # The _add_transport_edges function is defined below, we don't need a duplicate implementation
     @staticmethod
     def _scale_heights_for_markers(distribution_a: Distribution, distribution_b: Distribution):
         """
