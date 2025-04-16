@@ -17,16 +17,36 @@ st.set_page_config(
 
 # Initialize session state variables
 if 'distribution_a' not in st.session_state:
+    # Create distribution A with default blobs
     st.session_state.distribution_a = Distribution('A', 'red')
     
+    # Add some default positive blobs to distribution A
+    st.session_state.distribution_a.add_blob(x=3.0, y=3.0, variance=0.8, height=1.5, sign=1)
+    st.session_state.distribution_a.add_blob(x=7.0, y=7.0, variance=1.2, height=2.0, sign=1)
+    
+    # Add a negative blob to distribution A
+    st.session_state.distribution_a.add_blob(x=5.0, y=2.0, variance=0.5, height=1.0, sign=-1)
+    
 if 'distribution_b' not in st.session_state:
+    # Create distribution B with default blobs
     st.session_state.distribution_b = Distribution('B', 'blue')
+    
+    # Add some default positive blobs to distribution B
+    st.session_state.distribution_b.add_blob(x=2.0, y=7.0, variance=1.0, height=1.8, sign=1)
+    st.session_state.distribution_b.add_blob(x=8.0, y=3.0, variance=0.7, height=1.2, sign=1)
+    
+    # Add a negative blob to distribution B
+    st.session_state.distribution_b.add_blob(x=5.0, y=8.0, variance=0.6, height=1.5, sign=-1)
     
 if 'active_distribution' not in st.session_state:
     st.session_state.active_distribution = 'A'
 
 if 'show_both' not in st.session_state:
     st.session_state.show_both = True
+    
+# Initialize the bottleneck matching in the session state
+if 'bottleneck_matching' not in st.session_state:
+    st.session_state.bottleneck_matching = []
 
 def toggle_active_distribution(dist_name):
     st.session_state.active_distribution = dist_name
