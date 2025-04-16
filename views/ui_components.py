@@ -456,8 +456,59 @@ class UIComponents:
         show_a = not distribution_a.is_empty
         show_b = not distribution_b.is_empty
         
-        # Add tabs for distribution visualization and metrics
-        viz_tab, table_tab = st.tabs(["Visualization", "Distance Matrices"])
+        # First, show transport visualization selector (moved outside tabs)
+        # Dropdown for selecting transport visualization mode
+        current_plan = "hide"
+        if AppState.is_showing_bottleneck():
+            current_plan = "bottleneck_spatial"
+        elif AppState.is_showing_wasserstein():
+            current_plan = "wasserstein_spatial"
+        elif AppState.is_showing_height_bottleneck():
+            current_plan = "bottleneck_height"
+        elif AppState.is_showing_height_wasserstein():
+            current_plan = "wasserstein_height"
+        
+        transport_options = {
+            "hide": "Hide All Transport",
+            "bottleneck_spatial": "Spatial Bottleneck",
+            "wasserstein_spatial": "Spatial Wasserstein",
+            "bottleneck_height": "Height-Based Bottleneck",
+            "wasserstein_height": "Height-Based Wasserstein"
+        }
+        
+        st.markdown("### Transport Plan Selection")
+        selected_transport = st.selectbox(
+            "Transport Visualization",
+            options=list(transport_options.keys()),
+            format_func=lambda x: transport_options[x],
+            index=list(transport_options.keys()).index(current_plan),
+            key="transport_plan_selector"
+        )
+        
+        # Apply the selection
+        if selected_transport == "bottleneck_spatial":
+            AppState.set_transport_visualization("bottleneck_spatial")
+        elif selected_transport == "wasserstein_spatial":
+            AppState.set_transport_visualization("wasserstein_spatial")
+        elif selected_transport == "bottleneck_height":
+            AppState.set_transport_visualization("bottleneck_height")
+        elif selected_transport == "wasserstein_height":
+            AppState.set_transport_visualization("wasserstein_height")
+        else:
+            AppState.set_transport_visualization("hide")
+        
+        # Display explanation for the selected transport mode
+        if selected_transport == "bottleneck_spatial":
+            st.info("Spatial Bottleneck: Minimizes the maximum distance between any paired points.")
+        elif selected_transport == "wasserstein_spatial":
+            st.info("Spatial Wasserstein: Minimizes the overall transportation cost based on spatial positions.")
+        elif selected_transport == "bottleneck_height":
+            st.info("Height-Based Bottleneck: Pairs blobs to minimize the maximum height difference, ignoring positions.")
+        elif selected_transport == "wasserstein_height":
+            st.info("Height-Based Wasserstein: Optimal transport based only on blob heights, ignoring positions.")
+        
+        # Add tabs for distribution visualization and distances
+        viz_tab, distance_tab = st.tabs(["Visualization", "Distances"])
         
         with viz_tab:
             st.subheader("Visual Representation")
@@ -520,66 +571,13 @@ class UIComponents:
                     - **Connecting Lines**: When showing a transport plan, lines connect matching blobs.
                     - **Line Thickness**: For Wasserstein transport, thicker lines indicate higher weight transport.
                     """)
-            
-            # Show transport visualization controls
-            st.markdown("### Transport Plan")
-            col1, col2 = st.columns([2, 1])
-            
-            with col1:
-                # Dropdown for selecting transport visualization mode
-                current_plan = "hide"
-                if AppState.is_showing_bottleneck():
-                    current_plan = "bottleneck_spatial"
-                elif AppState.is_showing_wasserstein():
-                    current_plan = "wasserstein_spatial"
-                elif AppState.is_showing_height_bottleneck():
-                    current_plan = "bottleneck_height"
-                elif AppState.is_showing_height_wasserstein():
-                    current_plan = "wasserstein_height"
-                
-                transport_options = {
-                    "hide": "Hide All Transport",
-                    "bottleneck_spatial": "Spatial Bottleneck",
-                    "wasserstein_spatial": "Spatial Wasserstein",
-                    "bottleneck_height": "Height-Based Bottleneck",
-                    "wasserstein_height": "Height-Based Wasserstein"
-                }
-                
-                selected_transport = st.selectbox(
-                    "Transport Visualization",
-                    options=list(transport_options.keys()),
-                    format_func=lambda x: transport_options[x],
-                    index=list(transport_options.keys()).index(current_plan)
-                )
-                
-                # Apply the selection
-                if selected_transport == "bottleneck_spatial":
-                    AppState.set_transport_visualization("bottleneck_spatial")
-                elif selected_transport == "wasserstein_spatial":
-                    AppState.set_transport_visualization("wasserstein_spatial")
-                elif selected_transport == "bottleneck_height":
-                    AppState.set_transport_visualization("bottleneck_height")
-                elif selected_transport == "wasserstein_height":
-                    AppState.set_transport_visualization("wasserstein_height")
-                else:
-                    AppState.set_transport_visualization("hide")
-                
-                # Display explanation for the selected transport mode
-                if selected_transport == "bottleneck_spatial":
-                    st.info("Spatial Bottleneck: Minimizes the maximum distance between any paired points.")
-                elif selected_transport == "wasserstein_spatial":
-                    st.info("Spatial Wasserstein: Minimizes the overall transportation cost based on spatial positions.")
-                elif selected_transport == "bottleneck_height":
-                    st.info("Height-Based Bottleneck: Pairs blobs to minimize the maximum height difference, ignoring positions.")
-                elif selected_transport == "wasserstein_height":
-                    st.info("Height-Based Wasserstein: Optimal transport based only on blob heights, ignoring positions.")
-            
-            # Display the selected metric in the right column
-            with col2:
-                UIComponents.render_metrics(distribution_a, distribution_b, calculator, on_update)
         
-        # Display distance matrices for a detailed view
-        with table_tab:
+        # Display distance metrics and matrices
+        with distance_tab:
+            # Display metrics 
+            UIComponents.render_metrics(distribution_a, distribution_b, calculator, on_update)
+            
+            # Display distance matrices 
             UIComponents.render_distance_matrices(
                 distribution_a, distribution_b, calculator, selected_transport
             )
