@@ -74,15 +74,23 @@ class AppState:
     @staticmethod
     def set_transport_visualization(mode: str):
         """Set which transport visualization to show"""
+        # First reset all visualization modes
+        st.session_state.show_bottleneck_lines = False
+        st.session_state.show_wasserstein_lines = False
+        st.session_state.show_height_bottleneck_lines = False
+        st.session_state.show_height_wasserstein_lines = False
+        
+        # Then enable the selected one
         if mode == "hide":
-            st.session_state.show_bottleneck_lines = False
-            st.session_state.show_wasserstein_lines = False
-        elif mode == "bottleneck":
+            pass  # All already set to False
+        elif mode == "bottleneck_spatial":
             st.session_state.show_bottleneck_lines = True
-            st.session_state.show_wasserstein_lines = False
-        elif mode == "wasserstein":
-            st.session_state.show_bottleneck_lines = False
+        elif mode == "wasserstein_spatial":
             st.session_state.show_wasserstein_lines = True
+        elif mode == "bottleneck_height":
+            st.session_state.show_height_bottleneck_lines = True
+        elif mode == "wasserstein_height":
+            st.session_state.show_height_wasserstein_lines = True
     
     @staticmethod
     def get_active_distribution() -> str:
