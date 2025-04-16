@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Tuple, Optional
 import datetime
 import plotly.graph_objects as go
 from models.distribution import Distribution
-from controllers.distance_calculator import DistanceCalculator
+from controllers.pot_distance_calculator import POTDistanceCalculator
 from controllers.app_state import AppState
 
 def generate_distribution_data(dist_a: Distribution, dist_b: Distribution, selected_transport: str = "hide") -> Dict[str, Any]:
@@ -65,31 +65,31 @@ def generate_distribution_data(dist_a: Distribution, dist_b: Distribution, selec
     if not dist_a.is_empty and not dist_b.is_empty and selected_transport != "hide":
         # Calculate only the selected metric and plan
         if selected_transport == "bottleneck_spatial":
-            distance_value, matching_pairs = DistanceCalculator.calculate_bottleneck(dist_a, dist_b)
-            plan_explanation = DistanceCalculator.explain_matching(dist_a, dist_b, matching_pairs)
-            distance_matrix, idx_a, idx_b = DistanceCalculator.get_distance_matrix(dist_a, dist_b, 'spatial')
+            distance_value, matching_pairs = POTDistanceCalculator.calculate_bottleneck(dist_a, dist_b)
+            plan_explanation = POTDistanceCalculator.explain_matching(dist_a, dist_b, matching_pairs)
+            distance_matrix, idx_a, idx_b = POTDistanceCalculator.get_distance_matrix(dist_a, dist_b, 'spatial')
             metric_name = "Spatial Bottleneck Distance"
             
         elif selected_transport == "wasserstein_spatial":
-            distance_value, transport_pairs = DistanceCalculator.calculate_wasserstein_plan(dist_a, dist_b)
+            distance_value, transport_pairs = POTDistanceCalculator.calculate_wasserstein_plan(dist_a, dist_b)
             matching_pairs = [(a, b) for a, b, _ in transport_pairs]
             weights = [w for _, _, w in transport_pairs]
-            plan_explanation = DistanceCalculator.explain_matching(dist_a, dist_b, matching_pairs, weights)
-            distance_matrix, idx_a, idx_b = DistanceCalculator.get_distance_matrix(dist_a, dist_b, 'spatial')
+            plan_explanation = POTDistanceCalculator.explain_matching(dist_a, dist_b, matching_pairs, weights)
+            distance_matrix, idx_a, idx_b = POTDistanceCalculator.get_distance_matrix(dist_a, dist_b, 'spatial')
             metric_name = "Spatial Wasserstein Distance"
             
         elif selected_transport == "bottleneck_height":
-            distance_value, matching_pairs = DistanceCalculator.calculate_height_bottleneck_plan(dist_a, dist_b)
-            plan_explanation = DistanceCalculator.explain_matching(dist_a, dist_b, matching_pairs)
-            distance_matrix, idx_a, idx_b = DistanceCalculator.get_distance_matrix(dist_a, dist_b, 'height')
+            distance_value, matching_pairs = POTDistanceCalculator.calculate_height_bottleneck_plan(dist_a, dist_b)
+            plan_explanation = POTDistanceCalculator.explain_matching(dist_a, dist_b, matching_pairs)
+            distance_matrix, idx_a, idx_b = POTDistanceCalculator.get_distance_matrix(dist_a, dist_b, 'height')
             metric_name = "Height-Based Bottleneck Distance"
             
         elif selected_transport == "wasserstein_height":
-            distance_value, transport_pairs = DistanceCalculator.calculate_height_wasserstein_plan(dist_a, dist_b)
+            distance_value, transport_pairs = POTDistanceCalculator.calculate_height_wasserstein_plan(dist_a, dist_b)
             matching_pairs = [(a, b) for a, b, _ in transport_pairs]
             weights = [w for _, _, w in transport_pairs]
-            plan_explanation = DistanceCalculator.explain_matching(dist_a, dist_b, matching_pairs, weights)
-            distance_matrix, idx_a, idx_b = DistanceCalculator.get_distance_matrix(dist_a, dist_b, 'height')
+            plan_explanation = POTDistanceCalculator.explain_matching(dist_a, dist_b, matching_pairs, weights)
+            distance_matrix, idx_a, idx_b = POTDistanceCalculator.get_distance_matrix(dist_a, dist_b, 'height')
             metric_name = "Height-Based Wasserstein Distance"
             
         else:
