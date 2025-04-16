@@ -36,9 +36,17 @@ def create_wasserstein_transport_plot(distribution_a, distribution_b, wasserstei
     
     fig = go.Figure()
     
+    # Find max weight for normalization
+    max_weight = 0.01  # Small default to avoid division by zero
+    if wasserstein_pairs:
+        max_weight = max([w for _, _, w in wasserstein_pairs]) or 0.01
+    
     # Add transport lines
     for pair in wasserstein_pairs:
         idx_a, idx_b, weight = pair
+        
+        # Normalize weight for visual scaling
+        normalized_weight = weight / max_weight
         
         # Handle normal point-to-point connections
         if idx_a >= 0 and idx_b >= 0:
@@ -46,8 +54,18 @@ def create_wasserstein_transport_plot(distribution_a, distribution_b, wasserstei
             blob_b = distribution_b.blobs[idx_b]
             
             # Determine line color based on sign
-            line_color = 'green' if blob_a['sign'] > 0 else 'orange'
-            line_width = 1 + 3 * weight  # Scale line width by flow weight
+            if blob_a['sign'] > 0 and blob_b['sign'] > 0:
+                # Positive to positive
+                line_color = 'rgba(0, 128, 0, {})'.format(0.3 + 0.7 * normalized_weight)  # Green with opacity
+            elif blob_a['sign'] < 0 and blob_b['sign'] < 0:
+                # Negative to negative
+                line_color = 'rgba(255, 165, 0, {})'.format(0.3 + 0.7 * normalized_weight)  # Orange with opacity
+            else:
+                # This shouldn't happen with our matching algorithm but handle it anyway
+                line_color = 'rgba(128, 128, 128, {})'.format(0.3 + 0.7 * normalized_weight)  # Gray with opacity
+                
+            # Scale line width by flow weight
+            line_width = 1 + 4 * normalized_weight
             
             # Draw a line connecting the matched blobs
             fig.add_trace(go.Scatter(
@@ -57,7 +75,7 @@ def create_wasserstein_transport_plot(distribution_a, distribution_b, wasserstei
                 line=dict(color=line_color, width=line_width),
                 showlegend=False,
                 hoverinfo='text',
-                hovertext=f'Flow: A{idx_a} → B{idx_b}<br>Weight: {weight:.2f}'
+                hovertext=f'Flow: A{idx_a} → B{idx_b}<br>Weight: {weight:.4f} ({normalized_weight*100:.1f}%)'
             ))
             
         # Handle virtual points from distribution A to B
@@ -68,19 +86,22 @@ def create_wasserstein_transport_plot(distribution_a, distribution_b, wasserstei
             if idx_b == -1:  # Center of mass of positive points in B
                 target_x, target_y = center_of_mass_pos_b
                 target_name = "center(B+)"
+                line_color = 'rgba(0, 128, 0, {})'.format(0.3 + 0.7 * normalized_weight) if blob_a['sign'] > 0 else 'rgba(128, 128, 128, {})'.format(0.3 + 0.7 * normalized_weight)
             elif idx_b == -2:  # Geometric center of all points in B
                 target_x, target_y = center_of_mass_all_b
                 target_name = "center(B)"
+                line_color = 'rgba(128, 128, 128, {})'.format(0.3 + 0.7 * normalized_weight)
             elif idx_b == -3:  # Center of mass of negative points in B
                 target_x, target_y = center_of_mass_neg_b
                 target_name = "center(B-)"
+                line_color = 'rgba(255, 165, 0, {})'.format(0.3 + 0.7 * normalized_weight) if blob_a['sign'] < 0 else 'rgba(128, 128, 128, {})'.format(0.3 + 0.7 * normalized_weight)
             else:  # Geometric center for negative (idx_b == -4)
                 target_x, target_y = center_of_mass_all_b
                 target_name = "center(B)"
+                line_color = 'rgba(128, 128, 128, {})'.format(0.3 + 0.7 * normalized_weight)
             
-            # Determine line color based on sign
-            line_color = 'green' if blob_a['sign'] > 0 else 'orange'
-            line_width = 1 + 3 * weight  # Scale line width by flow weight
+            # Scale line width by flow weight
+            line_width = 1 + 4 * normalized_weight
             line_dash = 'dash'  # Use dashed line for virtual points
             
             # Draw a line connecting the blob to the virtual point
@@ -91,7 +112,7 @@ def create_wasserstein_transport_plot(distribution_a, distribution_b, wasserstei
                 line=dict(color=line_color, width=line_width, dash=line_dash),
                 showlegend=False,
                 hoverinfo='text',
-                hovertext=f'Flow: A{idx_a} → {target_name}<br>Weight: {weight:.2f}'
+                hovertext=f'Flow: A{idx_a} → {target_name}<br>Weight: {weight:.4f} ({normalized_weight*100:.1f}%)'
             ))
             
         # Handle virtual points from distribution B to A
@@ -102,19 +123,22 @@ def create_wasserstein_transport_plot(distribution_a, distribution_b, wasserstei
             if idx_a == -1:  # Center of mass of positive points in A
                 source_x, source_y = center_of_mass_pos_a
                 source_name = "center(A+)"
+                line_color = 'rgba(0, 128, 0, {})'.format(0.3 + 0.7 * normalized_weight) if blob_b['sign'] > 0 else 'rgba(128, 128, 128, {})'.format(0.3 + 0.7 * normalized_weight)
             elif idx_a == -2:  # Geometric center of all points in A
                 source_x, source_y = center_of_mass_all_a
                 source_name = "center(A)"
+                line_color = 'rgba(128, 128, 128, {})'.format(0.3 + 0.7 * normalized_weight)
             elif idx_a == -3:  # Center of mass of negative points in A
                 source_x, source_y = center_of_mass_neg_a
                 source_name = "center(A-)"
+                line_color = 'rgba(255, 165, 0, {})'.format(0.3 + 0.7 * normalized_weight) if blob_b['sign'] < 0 else 'rgba(128, 128, 128, {})'.format(0.3 + 0.7 * normalized_weight)
             else:  # Geometric center for negative (idx_a == -4)
                 source_x, source_y = center_of_mass_all_a
                 source_name = "center(A)"
+                line_color = 'rgba(128, 128, 128, {})'.format(0.3 + 0.7 * normalized_weight)
             
-            # Determine line color based on sign
-            line_color = 'green' if blob_b['sign'] > 0 else 'orange'
-            line_width = 1 + 3 * weight  # Scale line width by flow weight
+            # Scale line width by flow weight
+            line_width = 1 + 4 * normalized_weight
             line_dash = 'dash'  # Use dashed line for virtual points
             
             # Draw a line connecting the virtual point to the blob
@@ -125,7 +149,7 @@ def create_wasserstein_transport_plot(distribution_a, distribution_b, wasserstei
                 line=dict(color=line_color, width=line_width, dash=line_dash),
                 showlegend=False,
                 hoverinfo='text',
-                hovertext=f'Flow: {source_name} → B{idx_b}<br>Weight: {weight:.2f}'
+                hovertext=f'Flow: {source_name} → B{idx_b}<br>Weight: {weight:.4f} ({normalized_weight*100:.1f}%)'
             ))
     
     # Add markers for center of mass points if needed

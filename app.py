@@ -250,12 +250,14 @@ with left_col:
     df_a = pd.DataFrame(st.session_state.distribution_a.get_data())
     
     if not df_a.empty:
+        # Show data editor
         edited_df_a = st.data_editor(
             df_a,
             use_container_width=True,
             hide_index=True,
-            num_rows="fixed",
+            num_rows="fixed", 
             disabled=["id"],
+            key="data_editor_a",
             column_config={
                 "id": st.column_config.NumberColumn("ID", min_value=0, format="%d"),
                 "x": st.column_config.NumberColumn("X", min_value=0, max_value=10, format="%.2f"),
@@ -266,6 +268,40 @@ with left_col:
             }
         )
         
+        # Add a selectbox to choose which blob to edit
+        st.markdown("#### Select Blob to Manipulate")
+        blob_options = [f"Blob A{row['id']}" for _, row in df_a.iterrows()]
+        
+        if blob_options:
+            # Find current selection index if there is one
+            selected_index = 0
+            if (st.session_state.selected_element is not None and 
+                st.session_state.selected_element['dist'] == 'A'):
+                for i, opt in enumerate(blob_options):
+                    if f"A{st.session_state.selected_element['id']}" in opt:
+                        selected_index = i
+                        break
+                        
+            selected_blob = st.selectbox(
+                "Select a blob to manipulate:",
+                options=blob_options,
+                index=selected_index,
+                key="blob_selector_a"
+            )
+            
+            # Extract the ID from the selection string (e.g., "Blob A0" -> 0)
+            if selected_blob:
+                selected_id = int(selected_blob.split("A")[1])
+                
+                if (st.session_state.selected_element is None or 
+                    st.session_state.selected_element['dist'] != 'A' or 
+                    st.session_state.selected_element['id'] != selected_id):
+                    st.session_state.selected_element = {
+                        'type': 'center',  # Default to center - user can change to variance via UI
+                        'dist': 'A',
+                        'id': selected_id
+                    }
+                
         # Update distribution based on edited dataframe
         for index, row in edited_df_a.iterrows():
             original_row = df_a.iloc[index]
@@ -297,12 +333,14 @@ with right_col:
     df_b = pd.DataFrame(st.session_state.distribution_b.get_data())
     
     if not df_b.empty:
+        # Show data editor
         edited_df_b = st.data_editor(
             df_b,
             use_container_width=True,
             hide_index=True,
-            num_rows="fixed",
+            num_rows="fixed", 
             disabled=["id"],
+            key="data_editor_b",
             column_config={
                 "id": st.column_config.NumberColumn("ID", min_value=0, format="%d"),
                 "x": st.column_config.NumberColumn("X", min_value=0, max_value=10, format="%.2f"),
@@ -313,6 +351,40 @@ with right_col:
             }
         )
         
+        # Add a selectbox to choose which blob to edit
+        st.markdown("#### Select Blob to Manipulate")
+        blob_options = [f"Blob B{row['id']}" for _, row in df_b.iterrows()]
+        
+        if blob_options:
+            # Find current selection index if there is one
+            selected_index = 0
+            if (st.session_state.selected_element is not None and 
+                st.session_state.selected_element['dist'] == 'B'):
+                for i, opt in enumerate(blob_options):
+                    if f"B{st.session_state.selected_element['id']}" in opt:
+                        selected_index = i
+                        break
+                        
+            selected_blob = st.selectbox(
+                "Select a blob to manipulate:",
+                options=blob_options,
+                index=selected_index,
+                key="blob_selector_b"
+            )
+            
+            # Extract the ID from the selection string (e.g., "Blob B0" -> 0)
+            if selected_blob:
+                selected_id = int(selected_blob.split("B")[1])
+                
+                if (st.session_state.selected_element is None or 
+                    st.session_state.selected_element['dist'] != 'B' or 
+                    st.session_state.selected_element['id'] != selected_id):
+                    st.session_state.selected_element = {
+                        'type': 'center',  # Default to center - user can change to variance via UI
+                        'dist': 'B',
+                        'id': selected_id
+                    }
+                
         # Update distribution based on edited dataframe
         for index, row in edited_df_b.iterrows():
             original_row = df_b.iloc[index]
@@ -377,10 +449,27 @@ with center_col:
         # Find the selected blob
         for blob in distribution.blobs:
             if blob['id'] == blob_id:
-                # Different controls based on element type
-                if element_type == 'center':
-                    st.write(f"Adjust position of Blob {dist_name}{blob_id}")
-                    
+                st.write(f"Selected Blob: {dist_name}{blob_id} (Height: {blob['height']:.2f}, Sign: {blob['sign']})")
+                
+                # Add radio button to select what property to adjust
+                property_to_adjust = st.radio(
+                    "Adjust property:",
+                    ["Position", "Variance", "Height"],
+                    index=0 if element_type == 'center' else 1,
+                    key=f"property_selector_{dist_name}{blob_id}",
+                    horizontal=True
+                )
+                
+                # Update element type based on selection
+                if property_to_adjust == "Position" and element_type != 'center':
+                    st.session_state.selected_element['type'] = 'center'
+                    element_type = 'center'
+                elif property_to_adjust == "Variance" and element_type != 'variance':
+                    st.session_state.selected_element['type'] = 'variance'
+                    element_type = 'variance'
+                
+                # Different controls based on property to adjust
+                if property_to_adjust == "Position":
                     # Create a two-column layout for X and Y sliders
                     slider_col1, slider_col2 = st.columns(2)
                     
@@ -407,17 +496,10 @@ with center_col:
                     # Apply changes button
                     if st.button("Apply Position Changes", key=f"apply_pos_{dist_name}{blob_id}"):
                         update_blob(dist_name, blob_id, x=new_x, y=new_y)
-                    
-                    # Clear selection button
-                    if st.button("Clear Selection", key=f"clear_{dist_name}{blob_id}"):
-                        st.session_state.selected_element = None
-                        st.rerun()
                 
-                elif element_type == 'variance':
-                    st.write(f"Adjust variance (spread) of Blob {dist_name}{blob_id}")
-                    
+                elif property_to_adjust == "Variance":
                     new_variance = st.slider(
-                        "Variance", 
+                        "Variance (spread)", 
                         min_value=0.1, 
                         max_value=5.0, 
                         value=float(blob['variance']), 
@@ -428,11 +510,37 @@ with center_col:
                     # Apply changes button 
                     if st.button("Apply Variance Changes", key=f"apply_var_{dist_name}{blob_id}"):
                         update_blob(dist_name, blob_id, variance=new_variance)
+                
+                elif property_to_adjust == "Height":
+                    # Add sliders for height and sign
+                    height_slider_col, sign_slider_col = st.columns(2)
                     
-                    # Clear selection button
-                    if st.button("Clear Selection", key=f"clear_{dist_name}{blob_id}"):
-                        st.session_state.selected_element = None
-                        st.rerun()
+                    with height_slider_col:
+                        new_height = st.slider(
+                            "Height", 
+                            min_value=0.1, 
+                            max_value=10.0, 
+                            value=float(blob['height']), 
+                            step=0.1,
+                            key=f"height_slider_{dist_name}{blob_id}"
+                        )
+                    
+                    with sign_slider_col:
+                        new_sign = st.selectbox(
+                            "Sign", 
+                            options=[1, -1],
+                            index=0 if blob['sign'] > 0 else 1,
+                            key=f"sign_selector_{dist_name}{blob_id}"
+                        )
+                    
+                    # Apply changes button 
+                    if st.button("Apply Height Changes", key=f"apply_height_{dist_name}{blob_id}"):
+                        update_blob(dist_name, blob_id, height=new_height, sign=new_sign)
+                
+                # Clear selection button at the bottom
+                if st.button("Clear Selection", key=f"clear_{dist_name}{blob_id}"):
+                    st.session_state.selected_element = None
+                    st.rerun()
                 
                 break
     
