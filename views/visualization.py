@@ -273,7 +273,8 @@ class VisualizationService:
         show_height_wasserstein_lines: bool = False,
         height_wasserstein_pairs: Optional[List[Tuple[int, int, float]]] = None,
         show_contour_a: bool = False,
-        show_contour_b: bool = False
+        show_contour_b: bool = False,
+        contour_opacity: float = 0.3
     ):
         """
         Create an interactive plot that allows users to manipulate the distributions.
@@ -293,6 +294,7 @@ class VisualizationService:
             height_wasserstein_pairs: List of tuples (idx_a, idx_b, weight) indicating matched blob indices for height-based Wasserstein
             show_contour_a: Whether to show contour plot for Distribution A
             show_contour_b: Whether to show contour plot for Distribution B
+            contour_opacity: Opacity value (0-1) for contour plots
             
         Returns:
             Plotly figure object

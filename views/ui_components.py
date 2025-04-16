@@ -523,7 +523,7 @@ class UIComponents:
             # Add contour plot visibility controls
             col1, col2 = st.columns(2)
             with col1:
-                if st.checkbox("Show Teal Distribution Contour", value=AppState.is_showing_contour_a(), key="show_contour_a"):
+                if st.checkbox("Contour plot A", value=AppState.is_showing_contour_a(), key="show_contour_a"):
                     if not AppState.is_showing_contour_a():
                         AppState.toggle_contour_a()
                 else:
@@ -531,12 +531,25 @@ class UIComponents:
                         AppState.toggle_contour_a()
                         
             with col2:
-                if st.checkbox("Show Orange Distribution Contour", value=AppState.is_showing_contour_b(), key="show_contour_b"):
+                if st.checkbox("Contour plot B", value=AppState.is_showing_contour_b(), key="show_contour_b"):
                     if not AppState.is_showing_contour_b():
                         AppState.toggle_contour_b()
                 else:
                     if AppState.is_showing_contour_b():
                         AppState.toggle_contour_b()
+            
+            # Add opacity slider if contour plots are visible
+            if AppState.is_showing_contour_a() or AppState.is_showing_contour_b():
+                opacity = st.slider(
+                    "Contour plot opacity", 
+                    min_value=0.0, 
+                    max_value=1.0, 
+                    value=AppState.get_contour_opacity(), 
+                    step=0.05,
+                    key="contour_opacity"
+                )
+                if opacity != AppState.get_contour_opacity():
+                    AppState.set_contour_opacity(opacity)
             
             # Create the appropriate visualization
             if show_a or show_b:
@@ -547,6 +560,7 @@ class UIComponents:
                     show_both=AppState.is_showing_both(),
                     show_contour_a=AppState.is_showing_contour_a(),
                     show_contour_b=AppState.is_showing_contour_b(),
+                    contour_opacity=AppState.get_contour_opacity()
                 )
                 
                 # Get matching information
