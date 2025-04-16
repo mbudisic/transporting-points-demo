@@ -502,6 +502,22 @@ class UIComponents:
             bottleneck_value = wasserstein_discrete = wasserstein_continuous = 0
             bottleneck_heights = wasserstein_heights = 0
 
+        # Add a row for visualization mode selection
+        st.markdown("### Visualization Mode")
+        viz_mode = st.radio(
+            "Visualization Mode",
+            options=["Standard", "Graph-based"],
+            horizontal=True,
+            key="visualization_mode_radio",
+            label_visibility="collapsed"
+        )
+        
+        # Update the visualization mode in app state
+        new_mode = "standard" if viz_mode == "Standard" else "graph"
+        if new_mode != AppState.get_visualization_mode():
+            AppState.set_visualization_mode(new_mode)
+            on_update()
+        
         # Display at the top: transport plan selection dropdown in a narrower column
         # with distance value alongside
         col1, col2 = st.columns([2, 2])
@@ -559,29 +575,56 @@ class UIComponents:
         # We're removing the toggle button as requested
         # The visualization will always show both distributions when a transportation plan is selected
         
-        # Create interactive plot with all transport plan options
-        fig = visualization_service.create_interactive_plot(
-            distribution_a,
-            distribution_b,
-            active_distribution=AppState.get_active_distribution(),
-            show_both=AppState.is_showing_both(),
-            # Spatial transport plans
-            show_bottleneck_lines=AppState.is_showing_bottleneck(),
-            bottleneck_pairs=AppState.get_bottleneck_matching(),
-            show_wasserstein_lines=AppState.is_showing_wasserstein(),
-            wasserstein_pairs=AppState.get_wasserstein_pairs(),
-            # Height-based transport plans
-            show_height_bottleneck_lines=AppState.is_showing_height_bottleneck(),
-            height_bottleneck_pairs=AppState.get_height_bottleneck_matching(),
-            show_height_wasserstein_lines=AppState.is_showing_height_wasserstein(),
-            height_wasserstein_pairs=AppState.get_height_wasserstein_pairs()
-        )
-        
-        # Set the dragmode to 'drag' to support element dragging
-        fig.update_layout(
-            dragmode='zoom',  # Use zoom mode which allows for regular drag behavior
-            modebar_add=['drawopenpath', 'eraseshape']
-        )
+        # Choose which visualization to display based on the mode
+        if AppState.get_visualization_mode() == "standard":
+            # Create standard interactive plot with all transport plan options
+            fig = visualization_service.create_interactive_plot(
+                distribution_a,
+                distribution_b,
+                active_distribution=AppState.get_active_distribution(),
+                show_both=AppState.is_showing_both(),
+                # Spatial transport plans
+                show_bottleneck_lines=AppState.is_showing_bottleneck(),
+                bottleneck_pairs=AppState.get_bottleneck_matching(),
+                show_wasserstein_lines=AppState.is_showing_wasserstein(),
+                wasserstein_pairs=AppState.get_wasserstein_pairs(),
+                # Height-based transport plans
+                show_height_bottleneck_lines=AppState.is_showing_height_bottleneck(),
+                height_bottleneck_pairs=AppState.get_height_bottleneck_matching(),
+                show_height_wasserstein_lines=AppState.is_showing_height_wasserstein(),
+                height_wasserstein_pairs=AppState.get_height_wasserstein_pairs()
+            )
+            
+            # Set the dragmode to 'drag' to support element dragging
+            fig.update_layout(
+                dragmode='zoom',  # Use zoom mode which allows for regular drag behavior
+                modebar_add=['drawopenpath', 'eraseshape']
+            )
+        else:
+            # Use graph visualization service
+            from views.graph_visualization import GraphVisualizationService
+            
+            # Determine the transport mode
+            transport_mode = "hide"
+            if AppState.is_showing_bottleneck():
+                transport_mode = "bottleneck_spatial"
+            elif AppState.is_showing_wasserstein():
+                transport_mode = "wasserstein_spatial"
+            elif AppState.is_showing_height_bottleneck():
+                transport_mode = "bottleneck_height"
+            elif AppState.is_showing_height_wasserstein():
+                transport_mode = "wasserstein_height"
+                
+            # Create graph visualization
+            fig = GraphVisualizationService.create_graph_visualization(
+                distribution_a,
+                distribution_b,
+                transport_mode=transport_mode,
+                bottleneck_pairs=AppState.get_bottleneck_matching(),
+                wasserstein_pairs=AppState.get_wasserstein_pairs(),
+                height_bottleneck_pairs=AppState.get_height_bottleneck_matching(),
+                height_wasserstein_pairs=AppState.get_height_wasserstein_pairs()
+            )
         
         # Add event callbacks
         st.plotly_chart(

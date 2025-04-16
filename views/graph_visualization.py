@@ -179,6 +179,13 @@ class GraphVisualizationService:
         for blob in distribution_a.blobs + distribution_b.blobs:
             max_abs_height = max(max_abs_height, abs(blob.height))
         
+        # Calculate maximum edge weight for scaling
+        max_edge_weight = 0.1  # Default min value to avoid division by zero
+        if G_pos.edges:
+            max_edge_weight = max(max_edge_weight, max([d.get('weight', 0) for _, _, d in G_pos.edges(data=True)]))
+        if G_neg.edges:
+            max_edge_weight = max(max_edge_weight, max([d.get('weight', 0) for _, _, d in G_neg.edges(data=True)]))
+            
         # Visualize positive graph
         if pos_node_positions:
             # Add nodes
@@ -224,8 +231,8 @@ class GraphVisualizationService:
                     x0, y0 = pos_node_positions[u]
                     x1, y1 = pos_node_positions[v]
                     
-                    # Edge width based on weight 
-                    edge_width = max(1, 5 * (data['weight'] / max(max_edge_weight, 0.1))) if G_pos.edges else 1
+                    # Edge width based on weight, ensure it's positive
+                    edge_width = max(1, 5 * (data['weight'] / max_edge_weight))
                     
                     # Edge color and style based on transport type
                     if data.get('type') in ['bottleneck', 'wasserstein']:
@@ -294,11 +301,8 @@ class GraphVisualizationService:
                     x0, y0 = neg_node_positions[u]
                     x1, y1 = neg_node_positions[v]
                     
-                    # Calculate maximum edge weight for scaling
-                    max_edge_weight = max([d.get('weight', 0) for _, _, d in G_neg.edges(data=True)]) if G_neg.edges else 1
-                    
                     # Edge width based on weight (with minimum of 1)
-                    edge_width = max(1, 5 * (data['weight'] / max(max_edge_weight, 0.1)))
+                    edge_width = max(1, 5 * (data['weight'] / max_edge_weight))
                     
                     # Edge color and style based on transport type
                     if data.get('type') in ['bottleneck', 'wasserstein']:

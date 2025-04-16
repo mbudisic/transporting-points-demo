@@ -200,3 +200,14 @@ class AppState:
     def clear_selected_element():
         """Clear the selected element"""
         st.session_state.selected_element = None
+        
+    @staticmethod
+    def get_visualization_mode() -> str:
+        """Get the current visualization mode (standard or graph)"""
+        return st.session_state.visualization_mode
+        
+    @staticmethod
+    def set_visualization_mode(mode: str):
+        """Set the visualization mode (standard or graph)"""
+        if mode in ['standard', 'graph']:
+            st.session_state.visualization_mode = mode
