@@ -2,7 +2,7 @@
 
 An interactive educational visualization platform for exploring distance metrics between mathematical distributions through dynamic, engaging 2D probability simulations.
 
-**DISCLAIMER: This app was vibe-coded using Repl.it in order to try out its code generation features. If you are using it to help you learn about optimal transportation... don't - before you check that the computation is performed correctly. Caveat emptor.**
+**DISCLAIMER: This app was vibe-coded using Repl.it in order to try out its code generation features. If you are using it to help you learn about optimal transportation... don't - before you check that the computation is performed correctly. Caveat emptor. Use the `issues` to report errors you may find.**
 
 ![Application Screenshot](assets/optimal-transport.PNG)
 
